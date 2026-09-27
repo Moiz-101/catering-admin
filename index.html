@@ -742,6 +742,7 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
     main.innerHTML = screenTop('Dishes & prices') +
       '<input class="search" id="dishQ" placeholder="Search dishes" value="' + esc(dishSearch) + '">' +
       '<button class="save" data-new="1">+ Add a dish</button>' +
+      '<button class="save" data-upload="1" style="background:#EADFC8;color:#0E3B33">Upload a whole menu</button>' +
       '<div class="count">' + list.length + ' of ' + menuRows.length + ' dishes</div>' +
       list.map(function (d) {
         return '<div class="mrow' + (d.active ? '' : ' off') + '">' +
@@ -763,6 +764,7 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
         if (n) { n.focus(); try { n.setSelectionRange(at, at); } catch (e) {} }
       });
     };
+    main.querySelector('[data-upload]').onclick = function () { view = 'upload'; draw(); };
     main.querySelector('[data-new]').onclick = function () {
       editing = { id: null, name: '', cu: 'in', cat: 'starter', diet: 'veg', sub: '', note: '',
                   in_stock: true, active: true, sort: menuRows.length };
@@ -951,6 +953,198 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
       if (!r.error) menuCfg = cfg;
     };
     wireBack();
+  }
+
+
+  /* ---------------- uploading a whole menu ---------------- */
+
+  var upParsed = null;       // { rows, errors } from the last file read
+
+  // a small CSV reader that copes with quoted fields and commas inside them
+  function parseCSV(text) {
+    var rows = [], row = [], cell = '', q = false;
+    text = text.replace(/^﻿/, '').replace(/\r\n?/g, '\n');
+    for (var i = 0; i < text.length; i++) {
+      var ch = text[i];
+      if (q) {
+        if (ch === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; }
+        else cell += ch;
+      } else if (ch === '"') q = true;
+      else if (ch === ',') { row.push(cell); cell = ''; }
+      else if (ch === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; }
+      else cell += ch;
+    }
+    if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+    return rows.filter(function (r) { return r.some(function (c) { return c.trim() !== ''; }); });
+  }
+
+  var COURSE_WORDS = {
+    starter: 'starter', starters: 'starter', appetiser: 'starter', appetizer: 'starter',
+    main: 'main', mains: 'main', 'main course': 'main', curry: 'main',
+    rice: 'rice', noodle: 'noodle', noodles: 'noodle',
+    biryani: 'biryani', bread: 'bread', breads: 'bread',
+    dessert: 'dessert', desserts: 'dessert', sweet: 'dessert'
+  };
+  var CU_WORDS = { indian: 'in', india: 'in', 'in': 'in', chinese: 'ch', china: 'ch', 'ch': 'ch' };
+  var DIET_WORDS = {
+    veg: 'veg', vegetarian: 'veg', v: 'veg',
+    nonveg: 'nonveg', 'non-veg': 'nonveg', 'non veg': 'nonveg', nv: 'nonveg', 'non vegetarian': 'nonveg'
+  };
+
+  function readMenuFile(text) {
+    var rows = parseCSV(text);
+    if (!rows.length) return { rows: [], errors: ['The file is empty.'] };
+
+    var head = rows[0].map(function (h) { return h.trim().toLowerCase(); });
+    var looksLikeHeader = head.indexOf('name') !== -1 || head.indexOf('dish') !== -1;
+    var idx = {
+      name: Math.max(head.indexOf('name'), head.indexOf('dish')),
+      cat: Math.max(head.indexOf('course'), head.indexOf('category'), head.indexOf('cat')),
+      cu: Math.max(head.indexOf('cuisine'), head.indexOf('cu')),
+      diet: Math.max(head.indexOf('diet'), head.indexOf('veg')),
+      sub: Math.max(head.indexOf('group'), head.indexOf('sub'), head.indexOf('section')),
+      note: head.indexOf('note')
+    };
+    if (!looksLikeHeader) idx = { name: 0, cat: 1, cu: 2, diet: 3, sub: 4, note: 5 };
+
+    var out = [], errors = [], seen = {};
+    rows.slice(looksLikeHeader ? 1 : 0).forEach(function (r, n) {
+      var line = n + (looksLikeHeader ? 2 : 1);
+      var val = function (k) { return idx[k] >= 0 && r[idx[k]] != null ? String(r[idx[k]]).trim() : ''; };
+      var name = val('name');
+      if (!name) return;
+      var cat = COURSE_WORDS[val('cat').toLowerCase()];
+      var cu = CU_WORDS[val('cu').toLowerCase()];
+      if (!cat) { errors.push('Line ' + line + ': "' + val('cat') + '" is not a course I know (' + name + ')'); return; }
+      if (!cu) { errors.push('Line ' + line + ': "' + val('cu') + '" is not Indian or Chinese (' + name + ')'); return; }
+      var diet = DIET_WORDS[val('diet').toLowerCase()] || null;
+      var key = [name.toLowerCase(), cat, cu, diet || ''].join('|');
+      if (seen[key]) { errors.push('Line ' + line + ': ' + name + ' appears twice in the file'); return; }
+      seen[key] = 1;
+      out.push({ name: name, cat: cat, cu: cu, diet: diet,
+                 sub: val('sub') || null, note: val('note') || null, sort: out.length });
+    });
+    if (!out.length && !errors.length) errors.push('No dishes found. Check the column headings.');
+    return { rows: out, errors: errors };
+  }
+
+  function menuTemplate() {
+    var lines = ['name,course,cuisine,diet,group,note'];
+    menuRows.slice(0, 400).forEach(function (d) {
+      lines.push([d.name, d.cat, d.cu === 'ch' ? 'Chinese' : 'Indian',
+                  d.diet || '', d.sub || '', d.note || '']
+        .map(function (v) { return /[",]/.test(v) ? '"' + String(v).replace(/"/g, '""') + '"' : v; })
+        .join(','));
+    });
+    return lines.join('\n');
+  }
+
+  async function screenUpload() {
+    if (!menuRows.length) { if (!await loadMenu()) return; }
+    main.innerHTML = screenTop('Upload a menu') +
+      '<div class="note">A spreadsheet saved as <b>CSV</b>, with a row per dish. ' +
+      'Columns: <b>name, course, cuisine, diet, group, note</b>. Course is starter, main, rice, ' +
+      'noodle, biryani, bread or dessert. Cuisine is Indian or Chinese. Diet is veg, nonveg, or left empty.</div>' +
+      '<button class="save" id="uTpl" style="background:#EADFC8;color:#0E3B33">Download your menu as a template</button>' +
+      '<label class="field">Choose the file<input type="file" id="uFile" accept=".csv,text/csv,text/plain"></label>' +
+      '<div id="uOut"></div>';
+
+    document.getElementById('uTpl').onclick = function () {
+      var blob = new Blob([menuTemplate()], { type: 'text/csv' });
+      RPT.save(blob, 'Dragon-Empire-menu-template.csv');
+    };
+
+    document.getElementById('uFile').onchange = function (e) {
+      var f = e.target.files && e.target.files[0];
+      if (!f) return;
+      var fr = new FileReader();
+      fr.onload = function () { upParsed = readMenuFile(String(fr.result)); paintUploadPreview(f.name); };
+      fr.onerror = function () { document.getElementById('uOut').innerHTML = '<div class="err">Could not read that file.</div>'; };
+      fr.readAsText(f);
+    };
+    wireBack();
+  }
+
+  function paintUploadPreview(filename) {
+    var out = document.getElementById('uOut');
+    var p = upParsed;
+    if (!p.rows.length) {
+      out.innerHTML = '<div class="err">Nothing usable in ' + esc(filename) + '.<br>' +
+        p.errors.slice(0, 8).map(esc).join('<br>') + '</div>';
+      return;
+    }
+    var have = {};
+    menuRows.forEach(function (d) { have[[d.name.toLowerCase(), d.cat, d.cu, d.diet || ''].join('|')] = d; });
+    var isNew = 0, same = 0;
+    p.rows.forEach(function (r) {
+      if (have[[r.name.toLowerCase(), r.cat, r.cu, r.diet || ''].join('|')]) same++; else isNew++;
+    });
+    var missing = menuRows.filter(function (d) {
+      return !p.rows.some(function (r) {
+        return r.name.toLowerCase() === d.name.toLowerCase() && r.cat === d.cat && r.cu === d.cu && (r.diet || '') === (d.diet || '');
+      });
+    });
+
+    out.innerHTML =
+      '<div class="ok"><b>' + esc(filename) + '</b><br>' + p.rows.length + ' dishes read &middot; ' +
+        isNew + ' new &middot; ' + same + ' already on your menu</div>' +
+      (p.errors.length ? '<div class="err">' + p.errors.length + ' line' + (p.errors.length === 1 ? '' : 's') +
+        ' skipped:<br>' + p.errors.slice(0, 6).map(esc).join('<br>') +
+        (p.errors.length > 6 ? '<br>and ' + (p.errors.length - 6) + ' more' : '') + '</div>' : '') +
+      '<div class="count">How should I apply it?</div>' +
+      '<button class="save" id="uAdd">Add and update only</button>' +
+      '<div class="note">Keeps everything already on your menu. New dishes are added, matching ones have their group and note refreshed.</div>' +
+      '<button class="save" id="uRep" style="background:#8A5A00">Make this the whole menu</button>' +
+      '<div class="note">Does the above, and switches off the ' + missing.length + ' dish' + (missing.length === 1 ? '' : 'es') +
+        ' not in the file. They are hidden from customers but kept, so this can be undone.</div>' +
+      '<div id="uMsg"></div>';
+
+    document.getElementById('uAdd').onclick = function () { applyUpload(false); };
+    document.getElementById('uRep').onclick = function () { applyUpload(true, missing); };
+  }
+
+  async function applyUpload(replace, missing) {
+    var msg = document.getElementById('uMsg');
+    msg.className = 'note'; msg.textContent = 'Saving…';
+
+    var have = {};
+    menuRows.forEach(function (d) { have[[d.name.toLowerCase(), d.cat, d.cu, d.diet || ''].join('|')] = d; });
+
+    var inserts = [], updates = [];
+    upParsed.rows.forEach(function (r, i) {
+      var ex = have[[r.name.toLowerCase(), r.cat, r.cu, r.diet || ''].join('|')];
+      if (ex) updates.push({ id: ex.id, sub: r.sub, note: r.note, sort: i, active: true });
+      else inserts.push({ name: r.name, cat: r.cat, cu: r.cu, diet: r.diet, sub: r.sub, note: r.note, sort: i });
+    });
+
+    try {
+      if (inserts.length) {
+        for (var i = 0; i < inserts.length; i += 100) {
+          var r1 = await sb.from('menu_items').insert(inserts.slice(i, i + 100));
+          if (r1.error) throw new Error(r1.error.message);
+        }
+      }
+      for (var j = 0; j < updates.length; j++) {
+        var u = updates[j];
+        var r2 = await sb.from('menu_items').update({ sub: u.sub, note: u.note, sort: u.sort, active: true }).eq('id', u.id);
+        if (r2.error) throw new Error(r2.error.message);
+      }
+      if (replace && missing && missing.length) {
+        for (var k = 0; k < missing.length; k++) {
+          var r3 = await sb.from('menu_items').update({ active: false }).eq('id', missing[k].id);
+          if (r3.error) throw new Error(r3.error.message);
+        }
+      }
+      msg.className = 'ok';
+      msg.textContent = 'Done. ' + inserts.length + ' added, ' + updates.length + ' updated' +
+        (replace && missing ? ', ' + missing.length + ' switched off' : '') +
+        '. Customers see it now.';
+      upParsed = null;
+      await loadMenu();
+    } catch (e) {
+      msg.className = 'err';
+      msg.textContent = 'Stopped: ' + e.message + '. Anything already saved has been kept.';
+    }
   }
 
   /* ---------------- reports ---------------- */
@@ -1263,6 +1457,7 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
   }
 
   SCREENS.dishes = screenDishes;
+  SCREENS.upload = screenUpload;
   SCREENS.stock = screenStock;
   SCREENS.packages = screenPackages;
   SCREENS.reports = screenReports;
@@ -1360,6 +1555,7 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
       '<h4>The menu</h4>' +
       '<button data-m="dishes">Dishes &amp; prices</button>' +
       '<button data-m="stock">Out of stock</button>' +
+      '<button data-m="upload">Upload a whole menu</button>' +
       '<button data-m="packages">Packages &amp; themes</button>' +
       '<h4>Paperwork</h4>' +
       '<button data-m="reports">Reports</button>' +
