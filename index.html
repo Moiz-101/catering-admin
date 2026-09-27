@@ -26,12 +26,42 @@ header .t{display:flex;flex-direction:column;gap:1px;min-width:0}
 header .t b{font-family:'Fraunces',Georgia,serif;font-style:italic;font-weight:500;font-size:19px;color:#FBF6EA;line-height:1.1}
 header .t span{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#C9D6D1}
 header .more{position:relative;margin-left:auto;background:transparent;border:1.5px solid #C9963B;color:#E9C77E;
-     border-radius:10px;height:34px;width:38px;font-size:17px;font-weight:700;cursor:pointer;
-     line-height:1;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+     border-radius:10px;height:34px;padding:0 12px;font-size:13px;font-weight:700;cursor:pointer;
+     line-height:1;display:flex;align-items:center;gap:6px;flex-shrink:0}
+
+/* ---------- filters live at the foot, where the thumb is ---------- */
+#bar[hidden]{display:none}
+#bar{flex-shrink:0;background:#EADFC8;border-top:1px solid #D9CBAB;padding:8px 16px}
+#bar button{width:100%;height:42px;border-radius:12px;border:1.5px solid #C8BCA2;background:#FBF6EA;
+     color:#0E3B33;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;
+     justify-content:center;gap:8px}
+#bar button.on{border-color:#C62828;background:#FDECEA;color:#9B1C1C}
+#bar .tag{font-weight:600;color:#5A6863}
+#bar button.on .tag{color:#9B1C1C}
 
 /* ---------- the drop-down of filters and settings ---------- */
 #menu[hidden]{display:none}
-#menu{position:absolute;top:0;left:0;right:0;bottom:0;z-index:30;background:rgba(14,59,51,.35)}
+#menu{position:absolute;top:0;left:0;right:0;bottom:0;z-index:30;background:rgba(14,59,51,.35);
+     display:flex;flex-direction:column;justify-content:flex-end}
+#menu .panel{border-top:1.5px solid #D9CBAB;border-bottom:none;border-radius:18px 18px 0 0;
+     box-shadow:0 -8px 22px rgba(14,59,51,.22)}
+/* ---------- the Manage sheet drops from the header ---------- */
+#manage[hidden]{display:none}
+#manage{position:absolute;top:0;left:0;right:0;bottom:0;z-index:31;background:rgba(14,59,51,.35)}
+#manage .panel{background:#FBF6EA;border-bottom:1.5px solid #D9CBAB;padding:10px 16px 16px;
+     display:flex;flex-direction:column;gap:4px;box-shadow:0 6px 18px rgba(14,59,51,.2);
+     max-height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch}
+#manage h4{margin:6px 2px 2px;font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#7A6A4A;font-weight:700}
+#manage button{text-align:left;background:transparent;border:none;border-radius:10px;padding:12px;
+     font-size:15px;font-weight:600;color:#1B2B27;cursor:pointer;display:flex;align-items:center;gap:10px}
+#manage button:hover{background:#EADFC8}
+#manage .danger{color:#9B1C1C}
+#manage hr{border:none;border-top:1px solid #E4D9C2;margin:6px 0}
+#manage .mhead{display:flex;align-items:center;justify-content:space-between;gap:10px;
+     padding:2px 2px 6px;border-bottom:1px solid #E4D9C2;margin-bottom:2px}
+#manage .mhead span{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:17px;color:#0E3B33}
+#manage button.x{width:36px;height:36px;padding:0;justify-content:center;font-size:24px;
+     line-height:1;color:#0E3B33;background:#EADFC8;border-radius:10px;flex-shrink:0}
 #menu .panel{background:#FBF6EA;border-bottom:1.5px solid #D9CBAB;padding:10px 16px 16px;
      display:flex;flex-direction:column;gap:4px;box-shadow:0 6px 18px rgba(14,59,51,.2);
      max-height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch}
@@ -80,24 +110,32 @@ main > *,#sheetBody > *{flex-shrink:0}
 .name{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:19px;line-height:1.15;color:#0E3B33}
 .meta{font-size:13.5px;line-height:1.45;color:#4A5A55}
 .meta b{color:#1B2B27;font-weight:700}
-.when{font-size:12px;color:#8A9491;white-space:nowrap}
+.when{font-size:11.5px;font-weight:700;color:#5A6863;white-space:nowrap;flex-shrink:0;
+     background:#F3EDE0;border:1px solid #E4D9C2;border-radius:8px;padding:3px 8px}
 .ref{font-size:12px;font-weight:700;letter-spacing:.5px;color:#6A4E12}
 
 /* ---------- the 5-step bar, same shape as the customer sees ---------- */
-.steps{display:flex;align-items:center;gap:0;padding:2px 0}
-.steps .dot{width:22px;height:22px;flex-shrink:0;border-radius:50%;display:flex;align-items:center;
-     justify-content:center;font-size:11px;font-weight:700;background:#EADFC8;color:#A08F6B}
+.steps{display:flex;align-items:flex-start;padding:3px 0 1px}
+.steps .st{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:4px;position:relative}
+.steps .st::before{content:'';position:absolute;left:-50%;top:10px;width:100%;height:2px;background:#EADFC8}
+.steps .st:first-child::before{display:none}
+.steps .st.joined::before{background:#0E3B33}
+.steps .dot{position:relative;z-index:1;width:22px;height:22px;flex-shrink:0;border-radius:50%;
+     display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;
+     background:#EADFC8;color:#A08F6B}
 .steps .dot.done{background:#0E3B33;color:#E9C77E}
 .steps .dot.now{background:#C9963B;color:#2A1B02;box-shadow:0 0 0 3px rgba(201,150,59,.25)}
-.steps .bar{flex:1 1 auto;height:2px;background:#EADFC8;min-width:6px}
-.steps .bar.done{background:#0E3B33}
+.steps em{font-style:normal;font-size:8.5px;line-height:1.1;text-align:center;color:#9AA5A1;
+     letter-spacing:.2px;max-width:100%}
+.steps .st.done em{color:#4A5A55}
+.steps .st.now em{color:#8A5A00;font-weight:700}
 
 .acts{display:flex;gap:7px}
 .acts a,.acts button{flex:1 1 0;min-width:0;text-align:center;text-decoration:none;height:40px;line-height:38px;
      border-radius:12px;font-size:13.5px;font-weight:700;border:1.5px solid transparent;cursor:pointer;padding:0}
 .view{background:#C9963B;color:#2A1B02;border-color:#C9963B}
-.wa{background:#0E3B33;color:#FBF6EA;border-color:#0E3B33}
-.call{background:#fff;color:#0E3B33;border-color:#0E3B33}
+.wa{background:#25D366;color:#0B3D22;border-color:#1FB855}   /* WhatsApp's own green */
+.call{background:#0E3B33;color:#FBF6EA;border-color:#0E3B33}
 
 .muted{font-size:13.5px;color:#5A6863;text-align:center;padding:30px 12px;line-height:1.55}
 .count{font-size:12px;letter-spacing:1.4px;text-transform:uppercase;font-weight:700;color:#4A5A55;padding:2px 2px 0}
@@ -113,6 +151,34 @@ label.f input{height:44px;border:1.5px solid #DDD3BF;border-radius:12px;padding:
 .err{background:#FDECEA;border:1.5px solid #C62828;color:#9B1C1C;border-radius:12px;padding:10px 12px;font-size:13px;font-weight:600;line-height:1.45}
 .ok{background:#D3E7DE;border:1.5px solid #2F7A64;color:#12604B;border-radius:12px;padding:10px 12px;font-size:13px;font-weight:600;line-height:1.45}
 
+.screen h2{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:20px;color:#0E3B33;margin:0}
+.screen .back{background:#EADFC8;border:none;border-radius:10px;height:34px;padding:0 12px;
+     font-size:13px;font-weight:700;color:#0E3B33;cursor:pointer;flex-shrink:0}
+.screen .top{display:flex;align-items:center;gap:10px}
+.search{height:42px;border:1.5px solid #DDD3BF;border-radius:12px;padding:0 12px;font-size:15px;background:#fff;color:#1B2B27;width:100%}
+.mrow{display:flex;align-items:center;gap:10px;background:#fff;border:1.5px solid #E4D9C2;
+     border-radius:13px;padding:9px 11px}
+.mrow .nm{flex:1 1 auto;min-width:0;font-size:14px;font-weight:600;color:#1B2B27;line-height:1.3}
+.mrow .nm small{display:block;font-size:11px;font-weight:600;color:#8A9491;letter-spacing:.3px;text-transform:uppercase}
+.mrow.off{opacity:.55}
+.mrow .pill{flex-shrink:0;font-size:10.5px;font-weight:700;padding:3px 8px;border-radius:999px}
+.p-on{background:#D3E7DE;color:#12604B}
+.p-off{background:#FDECEA;color:#9B1C1C}
+.mrow button{flex-shrink:0;height:32px;padding:0 10px;border-radius:9px;border:1.5px solid #0E3B33;
+     background:#fff;color:#0E3B33;font-size:12.5px;font-weight:700;cursor:pointer}
+.field{display:flex;flex-direction:column;gap:5px;font-size:11px;letter-spacing:1px;
+     text-transform:uppercase;font-weight:700;color:#4A5A55}
+.field input,.field select,.field textarea{height:44px;border:1.5px solid #DDD3BF;border-radius:12px;
+     padding:0 11px;font-size:15px;background:#fff;color:#1B2B27;width:100%;-webkit-appearance:none}
+.field textarea{height:66px;padding:10px 11px;resize:vertical}
+.two{display:flex;gap:10px}.two > *{flex:1 1 0;min-width:0}
+.danger-btn{height:44px;border:1.5px solid #C62828;border-radius:12px;background:#fff;color:#9B1C1C;
+     font-size:14px;font-weight:700;cursor:pointer}
+.rpt{display:flex;align-items:center;gap:10px;background:#fff;border:1.5px solid #E4D9C2;
+     border-radius:14px;padding:11px 13px;cursor:pointer;text-align:left;width:100%}
+.rpt b{font-size:14px;color:#0E3B33;display:block}
+.rpt span{font-size:12px;color:#5A6863;line-height:1.35;display:block;margin-top:2px}
+.rpt .go{margin-left:auto;flex-shrink:0;color:#C9963B;font-size:19px;font-weight:700}
 .login{margin:auto;width:100%;max-width:330px;display:flex;flex-direction:column;gap:12px;padding:20px}
 .login h1{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:22px;margin:0;color:#0E3B33;text-align:center}
 
@@ -146,7 +212,7 @@ label.f input{height:44px;border:1.5px solid #DDD3BF;border-radius:12px;padding:
   <header>
     <img src="images/logo.png" alt="">
     <div class="t"><span>Dragon Empire</span><b>Enquiries</b></div>
-    <button class="more" id="more" hidden aria-label="Filters and settings">&#9776;</button>
+    <button class="more" id="more" hidden aria-label="Manage">Manage &#9662;</button>
   </header>
 
   <div id="tabs" hidden>
@@ -170,7 +236,15 @@ label.f input{height:44px;border:1.5px solid #DDD3BF;border-radius:12px;padding:
     </div>
   </main>
 
+  <footer id="bar" hidden>
+    <button id="filtersBtn" type="button">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"></path></svg>
+      <span>Filters</span><span class="tag" id="filterTag"></span>
+    </button>
+  </footer>
+
   <div id="menu" hidden><div class="panel" id="menuPanel"></div></div>
+  <div id="manage" hidden><div class="panel" id="managePanel"></div></div>
 
   <div id="sheet" hidden>
     <div class="bar">
@@ -192,6 +266,7 @@ window.DCLogic.prototype.setState = function (o) {
 window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
 </script>
 <script src="component.js"></script>
+<script src="reports.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>
 (function () {
@@ -204,7 +279,12 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
   var tabs   = document.getElementById('tabs');
   var badge  = document.getElementById('badge');
   var menu   = document.getElementById('menu');
-  var more   = document.getElementById('more');
+  var more   = document.getElementById('more');          // Manage, in the header
+  var bar    = document.getElementById('bar');           // the filter bar at the foot
+  var filtersBtn = document.getElementById('filtersBtn');
+  var filterTag  = document.getElementById('filterTag');
+  var manage = document.getElementById('manage');
+  var managePanel = document.getElementById('managePanel');
   var login  = document.getElementById('login');
   var sheet  = document.getElementById('sheet');
   var sheetBody = document.getElementById('sheetBody');
@@ -316,16 +396,23 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
     return 5;                              // review or thanks: all five behind them
   }
 
+  var STEP_SHORT = ['Details', 'Setup', 'Package', 'Dishes', 'Theme'];
+  var STEP_LABEL = { details: 'Customer details', setup: 'Setup', pkg: 'Packages',
+                     items: 'Choosing dishes', theme: 'Event theme',
+                     review: 'Review', thanks: 'Finished' };
+
   function stepBar(l) {
     var at = stepNo(l.step);
     var atReview = (l.step === 'review' || l.step === 'thanks');
     var html = '<div class="steps" aria-label="Reached step ' + at + ' of 5">';
     for (var n = 1; n <= 5; n++) {
-      var cls = 'dot';
-      if (n < at) cls += ' done';
-      else if (n === at) cls += atReview ? ' done' : ' now';
-      html += '<span class="' + cls + '">' + n + '</span>';
-      if (n < 5) html += '<span class="bar' + (n < at ? ' done' : '') + '"></span>';
+      var done = n < at || (n === at && atReview);
+      var now = n === at && !atReview;
+      html += '<div class="st' + (done ? ' done' : '') + (now ? ' now' : '') +
+              (n <= at ? ' joined' : '') + '">' +
+                '<span class="dot' + (done ? ' done' : (now ? ' now' : '')) + '">' + n + '</span>' +
+                '<em>' + STEP_SHORT[n - 1] + '</em>' +
+              '</div>';
     }
     return html + '</div>';
   }
@@ -451,12 +538,24 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
     '</div>';
   }
 
+  // "19/10/26, 26/pax" - short enough to sit on one line under the name
+  function shortLine(l) {
+    var bits = [];
+    if (l.event_date) {
+      var p = String(l.event_date).split('-');
+      bits.push(p[2] + '/' + p[1] + '/' + p[0].slice(2));
+    } else {
+      bits.push('date not set');
+    }
+    if (l.pax) bits.push(l.pax + '/pax');
+    return bits.join(', ');
+  }
+
   function progressCard(l, i) {
     return '<div class="card">' +
       '<div class="row"><div class="name">' + esc(l.name || 'No name') + '</div>' +
         '<span class="when">' + esc(stamp(l.updated_at)) + '</span></div>' +
-      '<div class="meta"><b>' + esc(when(l.event_date, l.event_time)) + '</b>' +
-        (l.pax ? ' &middot; <b>' + esc(l.pax) + '</b> guests' : '') + '</div>' +
+      '<div class="meta"><b>' + esc(shortLine(l)) + '</b></div>' +
       stepBar(l) +
       buttons(l, i) +
     '</div>';
@@ -468,8 +567,7 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
     return '<div class="card' + (unseen ? ' unseen' : '') + '">' +
       '<div class="row"><div class="name">' + esc(l.name || 'No name') + '</div>' +
         '<span class="when">' + esc(stamp(l.completed_at || l.updated_at)) + '</span></div>' +
-      '<div class="meta"><b>' + esc(when(l.event_date, l.event_time)) + '</b>' +
-        (l.pax ? ' &middot; <b>' + esc(l.pax) + '</b> guests' : '') + '</div>' +
+      '<div class="meta"><b>' + esc(shortLine(l)) + '</b></div>' +
       '<div class="row"><span class="ref">' + esc(l.ref || 'No number') + '</span>' +
         (totals.grandText ? '<span class="meta"><b>' + esc(totals.grandText) + '</b></span>' : '') + '</div>' +
       buttons(l, i) +
@@ -522,7 +620,9 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
   }
 
   function paintList() {
-    more.classList.toggle('on', filtersOn());
+    filtersBtn.classList.toggle('on', filtersOn());
+    filterTag.textContent = '· ' + rangeLabel() +
+      (F.size !== 'any' ? ' · ' + (F.size === 'under30' ? 'under 30' : F.size === 'mid' ? '30-50' : 'over 50') : '');
     var widen = ' Use the menu to look at other dates.';
     if (view === 'progress') {
       var open = sift(rows.filter(function (l) { return l.status !== 'completed'; }));
@@ -588,15 +688,596 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
     return true;
   }
 
+  var SCREENS = {};            // dishes, stock, packages, reports, settings
+
+
+  /* ================= Manage screens ================= */
+
+  var menuRows = [];          // every dish, including ones switched off
+  var menuCfg = null;         // prices, package sizes, themes
+  var editing = null;         // the dish open in the editor
+
+  var COURSES = [['starter','Starter'],['main','Main course'],['rice','Rice'],['noodle','Noodles'],
+                 ['biryani','Biryani'],['bread','Bread'],['dessert','Dessert']];
+  var courseName = function (c) {
+    for (var i = 0; i < COURSES.length; i++) if (COURSES[i][0] === c) return COURSES[i][1];
+    return c;
+  };
+
+  async function loadMenu() {
+    var got = await Promise.all([
+      sb.from('menu_items').select('*').order('sort', { ascending: true }),
+      sb.from('menu_config').select('data').limit(1)
+    ]);
+    if (got[0].error) { main.innerHTML = '<div class="err">' + esc(got[0].error.message) + '</div>'; return false; }
+    menuRows = got[0].data || [];
+    menuCfg = (got[1].data && got[1].data[0]) ? got[1].data[0].data : null;
+    return true;
+  }
+
+  function screenTop(title, extra) {
+    return '<div class="top"><button class="back" data-back="1">&larr; Back</button>' +
+           '<h2>' + esc(title) + '</h2></div>' + (extra || '');
+  }
+
+  function wireBack() {
+    var b = main.querySelector('[data-back]');
+    if (b) b.onclick = function () { backToList(); draw(); };
+  }
+
+  /* ---------------- dishes ---------------- */
+
+  var dishSearch = '';
+
+  async function screenDishes() {
+    main.innerHTML = '<div class="muted">Loading the menu…</div>';
+    if (!await loadMenu()) return;
+    if (editing) return paintDishEditor();
+
+    var q = dishSearch.toLowerCase();
+    var list = menuRows.filter(function (d) {
+      return !q || (d.name + ' ' + (d.sub || '') + ' ' + courseName(d.cat)).toLowerCase().indexOf(q) !== -1;
+    });
+
+    main.innerHTML = screenTop('Dishes & prices') +
+      '<input class="search" id="dishQ" placeholder="Search dishes" value="' + esc(dishSearch) + '">' +
+      '<button class="save" data-new="1">+ Add a dish</button>' +
+      '<div class="count">' + list.length + ' of ' + menuRows.length + ' dishes</div>' +
+      list.map(function (d) {
+        return '<div class="mrow' + (d.active ? '' : ' off') + '">' +
+          '<div class="nm">' + esc(d.name) +
+            '<small>' + esc(courseName(d.cat)) + ' &middot; ' + (d.cu === 'ch' ? 'Chinese' : 'Indian') +
+            (d.diet ? ' &middot; ' + (d.diet === 'veg' ? 'Veg' : 'Non-veg') : '') + '</small></div>' +
+          (d.active ? '' : '<span class="pill p-off">OFF</span>') +
+          (d.active && !d.in_stock ? '<span class="pill p-off">NO STOCK</span>' : '') +
+          '<button data-edit="' + d.id + '">Edit</button>' +
+        '</div>';
+      }).join('');
+
+    var qi = document.getElementById('dishQ');
+    qi.oninput = function () {
+      dishSearch = qi.value;
+      var at = qi.selectionStart;
+      screenDishes().then(function () {
+        var n = document.getElementById('dishQ');
+        if (n) { n.focus(); try { n.setSelectionRange(at, at); } catch (e) {} }
+      });
+    };
+    main.querySelector('[data-new]').onclick = function () {
+      editing = { id: null, name: '', cu: 'in', cat: 'starter', diet: 'veg', sub: '', note: '',
+                  in_stock: true, active: true, sort: menuRows.length };
+      paintDishEditor();
+    };
+    [].forEach.call(main.querySelectorAll('[data-edit]'), function (b) {
+      b.onclick = function () {
+        editing = menuRows.filter(function (d) { return String(d.id) === b.dataset.edit; })[0];
+        paintDishEditor();
+      };
+    });
+    wireBack();
+  }
+
+  function paintDishEditor() {
+    var d = editing;
+    main.innerHTML =
+      '<div class="top"><button class="back" data-cancel="1">&larr; Back</button>' +
+        '<h2>' + (d.id ? 'Edit dish' : 'New dish') + '</h2></div>' +
+      '<label class="field">Name<input id="dName" value="' + esc(d.name) + '"></label>' +
+      '<div class="two">' +
+        '<label class="field">Course<select id="dCat">' +
+          COURSES.map(function (c) { return '<option value="' + c[0] + '"' + (d.cat === c[0] ? ' selected' : '') + '>' + c[1] + '</option>'; }).join('') +
+        '</select></label>' +
+        '<label class="field">Cuisine<select id="dCu">' +
+          '<option value="in"' + (d.cu === 'in' ? ' selected' : '') + '>Indian</option>' +
+          '<option value="ch"' + (d.cu === 'ch' ? ' selected' : '') + '>Chinese</option>' +
+        '</select></label>' +
+      '</div>' +
+      '<div class="two">' +
+        '<label class="field">Veg or not<select id="dDiet">' +
+          '<option value="veg"' + (d.diet === 'veg' ? ' selected' : '') + '>Veg</option>' +
+          '<option value="nonveg"' + (d.diet === 'nonveg' ? ' selected' : '') + '>Non-veg</option>' +
+          '<option value=""' + (!d.diet ? ' selected' : '') + '>Neither</option>' +
+        '</select></label>' +
+        '<label class="field">Group<input id="dSub" value="' + esc(d.sub || '') + '" placeholder="e.g. Dim sum"></label>' +
+      '</div>' +
+      '<label class="field">Note shown to the customer<input id="dNote" value="' + esc(d.note || '') + '" placeholder="e.g. Chicken / Prawns"></label>' +
+      '<div class="toggle"><span>In stock</span><input id="dStock" type="checkbox"' + (d.in_stock ? ' checked' : '') + '></div>' +
+      '<div class="toggle"><span>On the menu</span><input id="dActive" type="checkbox"' + (d.active ? ' checked' : '') + '></div>' +
+      '<button class="save" id="dSave">Save</button>' +
+      (d.id ? '<button class="danger-btn" id="dDel">Remove this dish for good</button>' : '') +
+      '<div id="dMsg"></div>' +
+      '<div class="note">Switching a dish off, or out of stock, hides it from customers straight away. Removing it cannot be undone.</div>';
+
+    main.querySelector('[data-cancel]').onclick = function () { editing = null; screenDishes(); };
+
+    document.getElementById('dSave').onclick = async function () {
+      var msg = document.getElementById('dMsg');
+      var body = {
+        name: document.getElementById('dName').value.trim(),
+        cat: document.getElementById('dCat').value,
+        cu: document.getElementById('dCu').value,
+        diet: document.getElementById('dDiet').value || null,
+        sub: document.getElementById('dSub').value.trim() || null,
+        note: document.getElementById('dNote').value.trim() || null,
+        in_stock: document.getElementById('dStock').checked,
+        active: document.getElementById('dActive').checked
+      };
+      if (!body.name) { msg.className = 'err'; msg.textContent = 'Give the dish a name.'; return; }
+      var r = d.id
+        ? await sb.from('menu_items').update(body).eq('id', d.id)
+        : await sb.from('menu_items').insert(Object.assign({ sort: menuRows.length }, body));
+      if (r.error) {
+        msg.className = 'err';
+        msg.textContent = /duplicate|unique/i.test(r.error.message)
+          ? 'That dish already exists in this course.' : r.error.message;
+        return;
+      }
+      editing = null;
+      screenDishes();
+    };
+
+    var del = document.getElementById('dDel');
+    if (del) del.onclick = async function () {
+      if (del.dataset.armed !== '1') {
+        del.dataset.armed = '1';
+        del.textContent = 'Tap again to remove ' + d.name;
+        return;
+      }
+      var r = await sb.from('menu_items').delete().eq('id', d.id);
+      if (r.error) { document.getElementById('dMsg').className = 'err'; document.getElementById('dMsg').textContent = r.error.message; return; }
+      editing = null;
+      screenDishes();
+    };
+  }
+
+  /* ---------------- out of stock ---------------- */
+
+  async function screenStock() {
+    main.innerHTML = '<div class="muted">Loading the menu…</div>';
+    if (!await loadMenu()) return;
+    var off = menuRows.filter(function (d) { return d.active && !d.in_stock; });
+    var on = menuRows.filter(function (d) { return d.active && d.in_stock; });
+
+    function row(d) {
+      return '<div class="mrow' + (d.in_stock ? '' : ' off') + '">' +
+        '<div class="nm">' + esc(d.name) + '<small>' + esc(courseName(d.cat)) + '</small></div>' +
+        '<button data-stock="' + d.id + '" data-to="' + (d.in_stock ? '0' : '1') + '">' +
+          (d.in_stock ? 'Mark out' : 'Back in') + '</button></div>';
+    }
+
+    main.innerHTML = screenTop('Out of stock') +
+      '<div class="note">Out of stock hides a dish from customers today without removing it from your menu.</div>' +
+      (off.length ? '<div class="count">' + off.length + ' out of stock</div>' + off.map(row).join('')
+                  : '<div class="ok">Everything is in stock.</div>') +
+      '<div class="count">On the menu</div>' +
+      '<input class="search" id="stockQ" placeholder="Search to mark one out">' +
+      '<div id="stockList">' + on.slice(0, 40).map(row).join('') + '</div>';
+
+    function wireRows() {
+      [].forEach.call(main.querySelectorAll('[data-stock]'), function (b) {
+        b.onclick = async function () {
+          b.disabled = true;
+          var r = await sb.from('menu_items').update({ in_stock: b.dataset.to === '1' }).eq('id', +b.dataset.stock);
+          if (r.error) { b.disabled = false; alert(r.error.message); return; }
+          screenStock();
+        };
+      });
+    }
+    var sq = document.getElementById('stockQ');
+    sq.oninput = function () {
+      var q = sq.value.toLowerCase();
+      var hits = on.filter(function (d) { return !q || d.name.toLowerCase().indexOf(q) !== -1; });
+      document.getElementById('stockList').innerHTML = hits.slice(0, 40).map(row).join('');
+      wireRows();
+    };
+    wireRows();
+    wireBack();
+  }
+
+  /* ---------------- packages, prices and themes ---------------- */
+
+  var SETUPS = [['buffet','Buffet'],['live','Live station'],['delivery','Delivery']];
+  var CUIS = [['ic','Indian & Chinese'],['in','Indian only'],['ch','Chinese only']];
+
+  async function screenPackages() {
+    main.innerHTML = '<div class="muted">Loading…</div>';
+    if (!await loadMenu()) return;
+    if (!menuCfg) { main.innerHTML = screenTop('Packages & themes') + '<div class="err">No pricing found in the database.</div>'; wireBack(); return; }
+
+    var html = screenTop('Packages & themes') +
+      '<div class="note">Per-person prices, in dirhams, for each package. These are what the customer is quoted.</div>';
+
+    CUIS.forEach(function (c) {
+      html += '<div class="count">' + esc(c[1]) + '</div>';
+      SETUPS.forEach(function (st) {
+        var arr = (menuCfg.PRICES[c[0]] || {})[st[0]] || [0, 0, 0, 0];
+        html += '<div class="mrow"><div class="nm" style="flex:0 0 74px">' + esc(st[1]) + '</div>' +
+          arr.map(function (v, i) {
+            return '<input class="search" style="height:38px;text-align:center;padding:0 4px" ' +
+                   'data-price="' + c[0] + '|' + st[0] + '|' + i + '" value="' + v + '" inputmode="numeric">';
+          }).join('') + '</div>';
+      });
+    });
+
+    html += '<div class="count">Themes</div>' +
+      menuCfg.THEMES.map(function (t, i) {
+        return '<div class="mrow"><div class="nm">' + esc(t.name) + '</div>' +
+          '<input class="search" style="height:38px;width:92px;text-align:center" data-theme="' + i + '" value="' + (t.price || 0) + '" inputmode="numeric"></div>';
+      }).join('') +
+      '<label class="field">Custom-menu mark-up<input id="cMarkup" value="' + menuCfg.CUSTOM_MARKUP + '" inputmode="decimal"></label>' +
+      '<div class="note">1.1 means a build-your-own menu costs 10% more than the equivalent package.</div>' +
+      '<button class="save" id="pSave">Save prices</button><div id="pMsg"></div>';
+
+    main.innerHTML = html;
+
+    document.getElementById('pSave').onclick = async function () {
+      var msg = document.getElementById('pMsg');
+      var cfg = JSON.parse(JSON.stringify(menuCfg));
+      [].forEach.call(main.querySelectorAll('[data-price]'), function (inp) {
+        var k = inp.dataset.price.split('|');
+        var v = parseInt(inp.value, 10);
+        if (!isNaN(v) && v >= 0) cfg.PRICES[k[0]][k[1]][+k[2]] = v;
+      });
+      [].forEach.call(main.querySelectorAll('[data-theme]'), function (inp) {
+        var v = parseInt(inp.value, 10);
+        if (!isNaN(v) && v >= 0) cfg.THEMES[+inp.dataset.theme].price = v;
+      });
+      var mk = parseFloat(document.getElementById('cMarkup').value);
+      if (!isNaN(mk) && mk >= 1 && mk <= 3) cfg.CUSTOM_MARKUP = mk;
+
+      var r = await sb.from('menu_config').update({ data: cfg }).eq('id', true);
+      msg.className = r.error ? 'err' : 'ok';
+      msg.textContent = r.error ? r.error.message : 'Saved. Customers see the new prices straight away.';
+      if (!r.error) menuCfg = cfg;
+    };
+    wireBack();
+  }
+
+  /* ---------------- reports ---------------- */
+
+  var rptFrom = '', rptTo = '';
+
+  function money(n) { return (n || 0).toLocaleString('en-US') + ' Dh'; }
+  function dmy(ymd) {
+    if (!ymd) return '';
+    var p = String(ymd).slice(0, 10).split('-');
+    return p[2] + '/' + p[1] + '/' + p[0].slice(2);
+  }
+  function grand(l) { return (((l.details || {}).totals || {}).grand) || 0; }
+  function picked(l) { return (((l.details || {}).order || {}).picked) || []; }
+  function pkgOf(l) {
+    var m = (l.details || {}).menu || {};
+    return m.package === 'custom' ? 'Custom menu' : (m.package ? 'Package ' + m.package : 'Not chosen');
+  }
+  function themeOf(l) { return ((l.details || {}).theme) || 'None'; }
+
+  function inReportRange(iso) {
+    if (!iso) return false;
+    var t = new Date(iso).getTime();
+    if (rptFrom && t < new Date(rptFrom + 'T00:00:00+04:00').getTime()) return false;
+    if (rptTo && t > new Date(rptTo + 'T23:59:59+04:00').getTime()) return false;
+    return true;
+  }
+  function rangeText() {
+    if (rptFrom && rptTo) return dmy(rptFrom) + ' to ' + dmy(rptTo);
+    if (rptFrom) return 'from ' + dmy(rptFrom);
+    if (rptTo) return 'up to ' + dmy(rptTo);
+    return 'All time';
+  }
+
+  var REPORTS = [
+    { id: 'orders', name: 'Confirmed orders',
+      why: 'Every order placed in the period, with the money. The one for your accountant.' },
+    { id: 'upcoming', name: 'Upcoming events',
+      why: 'Confirmed orders by event date, soonest first. What you are cooking next.' },
+    { id: 'lost', name: 'Enquiries not confirmed',
+      why: 'People who left details but never ordered, and the step they stopped on.' },
+    { id: 'dishes', name: 'Most popular dishes',
+      why: 'How often each dish was chosen, ranked, grouped by course.' },
+    { id: 'packages', name: 'Package popularity',
+      why: 'Which packages sell, how many of each and what they brought in.' },
+    { id: 'themes', name: 'Theme popularity',
+      why: 'Which event themes customers pick, and the revenue from them.' },
+    { id: 'summary', name: 'Business summary',
+      why: 'Orders, revenue, averages, and the split by package and emirate.' },
+    { id: 'daily', name: 'Day by day activity',
+      why: 'Link opens, enquiries started and orders placed, per day.' },
+    { id: 'customers', name: 'Customer list',
+      why: 'Everyone who ever enquired, with contact details and what they spent.' },
+    { id: 'menu', name: 'The current menu',
+      why: 'Your whole menu as it stands today, including anything out of stock.' }
+  ];
+
+  async function screenReports() {
+    main.innerHTML = screenTop('Reports') +
+      '<div class="note">Pick the dates, then choose a report. Each one downloads as a PDF.</div>' +
+      '<div class="two">' +
+        '<label class="field">From<input type="date" id="rFrom" value="' + esc(rptFrom) + '"></label>' +
+        '<label class="field">To<input type="date" id="rTo" value="' + esc(rptTo) + '"></label>' +
+      '</div>' +
+      '<div class="note" id="rRange">Showing: ' + esc(rangeText()) + '. Leave both empty for all time.</div>' +
+      REPORTS.map(function (r) {
+        return '<button class="rpt" data-rpt="' + r.id + '"><div><b>' + esc(r.name) + '</b>' +
+               '<span>' + esc(r.why) + '</span></div><span class="go">&rsaquo;</span></button>';
+      }).join('') +
+      '<div id="rMsg"></div>';
+
+    function syncRange() {
+      rptFrom = document.getElementById('rFrom').value;
+      rptTo = document.getElementById('rTo').value;
+      document.getElementById('rRange').textContent =
+        'Showing: ' + rangeText() + '. Leave both empty for all time.';
+    }
+    document.getElementById('rFrom').onchange = syncRange;
+    document.getElementById('rTo').onchange = syncRange;
+
+    [].forEach.call(main.querySelectorAll('[data-rpt]'), function (b) {
+      b.onclick = async function () {
+        syncRange();
+        var msg = document.getElementById('rMsg');
+        msg.className = 'note'; msg.textContent = 'Building…';
+        try {
+          await makeReport(b.dataset.rpt);
+          msg.className = 'ok'; msg.textContent = 'Downloaded.';
+        } catch (e) {
+          msg.className = 'err'; msg.textContent = 'Could not build that report: ' + (e.message || e);
+        }
+      };
+    });
+    wireBack();
+  }
+
+  async function makeReport(id) {
+    if (!rows.length) await load();
+    var all = rows;
+    var orders = all.filter(function (l) { return l.status === 'completed' && inReportRange(l.completed_at || l.updated_at); });
+    var stopped = all.filter(function (l) { return l.status !== 'completed' && inReportRange(l.updated_at); });
+    var sub = rangeText();
+    var spec = null;
+
+    if (id === 'orders') {
+      orders.sort(function (a, b) { return (a.completed_at || '') < (b.completed_at || '') ? 1 : -1; });
+      spec = {
+        title: 'Confirmed orders', subtitle: sub,
+        columns: [{ label: 'Order', w: 1.1, bold: true }, { label: 'Customer', w: 1.6 },
+                  { label: 'Placed', w: .9 }, { label: 'Event', w: .9 },
+                  { label: 'Guests', w: .7, right: true }, { label: 'Package', w: 1.1 },
+                  { label: 'Total', w: 1, right: true, bold: true }],
+        rows: orders.map(function (l) {
+          return [l.ref || '-', l.name || 'No name', dmy(l.completed_at), dmy(l.event_date),
+                  l.pax || '', pkgOf(l), money(grand(l))];
+        }),
+        totals: [['Orders', String(orders.length)],
+                 ['Total value', money(orders.reduce(function (a, l) { return a + grand(l); }, 0))]]
+      };
+    }
+
+    if (id === 'upcoming') {
+      var up = all.filter(function (l) { return l.status === 'completed' && l.event_date; })
+                  .sort(function (a, b) { return a.event_date < b.event_date ? -1 : 1; });
+      spec = {
+        title: 'Upcoming events', subtitle: 'Every confirmed event, soonest first',
+        columns: [{ label: 'Event date', w: 1, bold: true }, { label: 'Time', w: .8 },
+                  { label: 'Customer', w: 1.5 }, { label: 'Phone', w: 1.3 },
+                  { label: 'Guests', w: .7, right: true }, { label: 'Emirate', w: 1 },
+                  { label: 'Order', w: 1 }],
+        rows: up.map(function (l) {
+          return [dmy(l.event_date), l.event_time || '', l.name || '', l.phone || '',
+                  l.pax || '', l.emirate || '', l.ref || ''];
+        }),
+        totals: [['Events', String(up.length)],
+                 ['Guests in total', String(up.reduce(function (a, l) { return a + (l.pax || 0); }, 0))]]
+      };
+    }
+
+    if (id === 'lost') {
+      spec = {
+        title: 'Enquiries not confirmed', subtitle: sub,
+        columns: [{ label: 'Customer', w: 1.5, bold: true }, { label: 'Phone', w: 1.3 },
+                  { label: 'Last seen', w: 1 }, { label: 'Event', w: .9 },
+                  { label: 'Guests', w: .7, right: true }, { label: 'Stopped at', w: 1.3 },
+                  { label: 'Worth', w: 1, right: true }],
+        rows: stopped.map(function (l) {
+          return [l.name || 'No name', l.phone || '', dmy(l.updated_at), dmy(l.event_date),
+                  l.pax || '', STEP_LABEL[l.step] || l.step || '', grand(l) ? money(grand(l)) : '-'];
+        }),
+        totals: [['Enquiries lost', String(stopped.length)],
+                 ['Value left on the table', money(stopped.reduce(function (a, l) { return a + grand(l); }, 0))]],
+        note: 'These people gave you their number. Most are still worth a call.'
+      };
+    }
+
+    if (id === 'dishes') {
+      var tally = {};
+      orders.concat(stopped).forEach(function (l) {
+        picked(l).forEach(function (d) {
+          var k = d.cat + '|' + d.name;
+          tally[k] = (tally[k] || 0) + 1;
+        });
+      });
+      var list = Object.keys(tally).map(function (k) {
+        var p = k.split('|');
+        return [p[1], courseName(p[0]), tally[k]];
+      }).sort(function (a, b) { return b[2] - a[2]; });
+      spec = {
+        title: 'Most popular dishes', subtitle: sub,
+        columns: [{ label: '#', w: .4, dim: true }, { label: 'Dish', w: 2.6, bold: true },
+                  { label: 'Course', w: 1.2 }, { label: 'Times chosen', w: 1, right: true }],
+        rows: list.map(function (r, i) { return [i + 1, r[0], r[1], r[2]]; }),
+        totals: [['Different dishes chosen', String(list.length)]],
+        note: 'Counts every order and every unfinished enquiry, so it shows what people want, not just what they paid for.'
+      };
+    }
+
+    if (id === 'packages' || id === 'themes') {
+      var isPkg = id === 'packages';
+      var t = {};
+      orders.forEach(function (l) {
+        var k = isPkg ? pkgOf(l) : themeOf(l);
+        t[k] = t[k] || { n: 0, v: 0, g: 0 };
+        t[k].n++; t[k].v += grand(l); t[k].g += (l.pax || 0);
+      });
+      var list2 = Object.keys(t).map(function (k) { return [k, t[k].n, t[k].v, t[k].g]; })
+                               .sort(function (a, b) { return b[1] - a[1]; });
+      spec = {
+        title: isPkg ? 'Package popularity' : 'Theme popularity', subtitle: sub,
+        columns: [{ label: isPkg ? 'Package' : 'Theme', w: 2, bold: true },
+                  { label: 'Orders', w: .8, right: true }, { label: 'Guests', w: .8, right: true },
+                  { label: 'Revenue', w: 1.2, right: true }],
+        rows: list2.map(function (r) { return [r[0], r[1], r[3], money(r[2])]; }),
+        totals: [['Orders', String(orders.length)],
+                 ['Revenue', money(orders.reduce(function (a, l) { return a + grand(l); }, 0))]]
+      };
+    }
+
+    if (id === 'summary') {
+      var rev = orders.reduce(function (a, l) { return a + grand(l); }, 0);
+      var gu = orders.reduce(function (a, l) { return a + (l.pax || 0); }, 0);
+      var byEm = {}, byPk = {};
+      orders.forEach(function (l) {
+        byEm[l.emirate || 'Not given'] = (byEm[l.emirate || 'Not given'] || 0) + 1;
+        byPk[pkgOf(l)] = (byPk[pkgOf(l)] || 0) + 1;
+      });
+      var body = [
+        ['Confirmed orders', String(orders.length)],
+        ['Enquiries that did not convert', String(stopped.length)],
+        ['Conversion', (orders.length + stopped.length) ? Math.round(100 * orders.length / (orders.length + stopped.length)) + '%' : '-'],
+        ['Total revenue', money(rev)],
+        ['Average order', orders.length ? money(Math.round(rev / orders.length)) : '-'],
+        ['Guests catered', String(gu)],
+        ['Average party size', orders.length ? String(Math.round(gu / orders.length)) : '-'],
+        ['', ''], ['BY PACKAGE', '']
+      ].concat(Object.keys(byPk).map(function (k) { return [k, String(byPk[k])]; }))
+       .concat([['', ''], ['BY EMIRATE', '']])
+       .concat(Object.keys(byEm).map(function (k) { return [k, String(byEm[k])]; }));
+      spec = {
+        title: 'Business summary', subtitle: sub,
+        columns: [{ label: 'Measure', w: 2.4, bold: true }, { label: 'Value', w: 1.2, right: true }],
+        rows: body
+      };
+    }
+
+    if (id === 'daily') {
+      var vis = await sb.from('visits').select('created_at');
+      var day = {};
+      function bump(iso, key) {
+        if (!iso) return;
+        var d = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Dubai' }).format(new Date(iso));
+        day[d] = day[d] || { opened: 0, started: 0, ordered: 0, value: 0 };
+        day[d][key]++;
+      }
+      (vis.data || []).forEach(function (v) { if (inReportRange(v.created_at)) bump(v.created_at, 'opened'); });
+      all.forEach(function (l) {
+        if (inReportRange(l.created_at)) bump(l.created_at, 'started');
+        if (l.status === 'completed' && inReportRange(l.completed_at || l.updated_at)) {
+          bump(l.completed_at || l.updated_at, 'ordered');
+          var d = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Dubai' }).format(new Date(l.completed_at || l.updated_at));
+          if (day[d]) day[d].value += grand(l);
+        }
+      });
+      var days = Object.keys(day).sort().reverse();
+      spec = {
+        title: 'Day by day activity', subtitle: sub,
+        columns: [{ label: 'Date', w: 1.2, bold: true }, { label: 'Opened', w: .9, right: true },
+                  { label: 'Left details', w: 1.1, right: true }, { label: 'Ordered', w: .9, right: true },
+                  { label: 'Value', w: 1.2, right: true }],
+        rows: days.map(function (d) {
+          return [dmy(d), day[d].opened, day[d].started, day[d].ordered, day[d].value ? money(day[d].value) : '-'];
+        }),
+        totals: [['Days with activity', String(days.length)],
+                 ['Total opens', String(days.reduce(function (a, d) { return a + day[d].opened; }, 0))],
+                 ['Total orders', String(days.reduce(function (a, d) { return a + day[d].ordered; }, 0))]]
+      };
+    }
+
+    if (id === 'customers') {
+      var who = {};
+      all.forEach(function (l) {
+        var k = (l.phone || l.name || l.session_id);
+        who[k] = who[k] || { name: l.name, phone: l.phone, emirate: l.emirate, n: 0, orders: 0, spent: 0, last: '' };
+        who[k].n++;
+        if (l.status === 'completed') { who[k].orders++; who[k].spent += grand(l); }
+        if (!who[k].last || l.updated_at > who[k].last) who[k].last = l.updated_at;
+      });
+      var people = Object.keys(who).map(function (k) { return who[k]; })
+                         .sort(function (a, b) { return b.spent - a.spent || b.n - a.n; });
+      spec = {
+        title: 'Customer list', subtitle: 'Everyone who has ever enquired',
+        columns: [{ label: 'Name', w: 1.5, bold: true }, { label: 'Phone', w: 1.4 },
+                  { label: 'Emirate', w: 1 }, { label: 'Enquiries', w: .9, right: true },
+                  { label: 'Orders', w: .8, right: true }, { label: 'Spent', w: 1.1, right: true }],
+        rows: people.map(function (p) {
+          return [p.name || 'No name', p.phone || '', p.emirate || '', p.n, p.orders, p.spent ? money(p.spent) : '-'];
+        }),
+        totals: [['People', String(people.length)],
+                 ['Total spent', money(people.reduce(function (a, p) { return a + p.spent; }, 0))]]
+      };
+    }
+
+    if (id === 'menu') {
+      if (!menuRows.length) await loadMenu();
+      var byCourse = {};
+      menuRows.forEach(function (d) { (byCourse[d.cat] = byCourse[d.cat] || []).push(d); });
+      var mrows = [];
+      COURSES.forEach(function (c) {
+        (byCourse[c[0]] || []).forEach(function (d) {
+          mrows.push([c[1], d.name, d.cu === 'ch' ? 'Chinese' : 'Indian',
+                      d.diet === 'veg' ? 'Veg' : d.diet === 'nonveg' ? 'Non-veg' : '',
+                      d.sub || '', !d.active ? 'Off menu' : (!d.in_stock ? 'Out of stock' : 'Live')]);
+        });
+      });
+      spec = {
+        title: 'The current menu', subtitle: 'As it stands today',
+        columns: [{ label: 'Course', w: 1, dim: true }, { label: 'Dish', w: 2.2, bold: true },
+                  { label: 'Cuisine', w: .9 }, { label: 'Diet', w: .8 },
+                  { label: 'Group', w: 1.1, dim: true }, { label: 'Status', w: 1 }],
+        rows: mrows,
+        totals: [['Dishes on the menu', String(menuRows.filter(function (d) { return d.active; }).length)],
+                 ['Out of stock today', String(menuRows.filter(function (d) { return d.active && !d.in_stock; }).length)]]
+      };
+    }
+
+    if (!spec) throw new Error('unknown report');
+    var name = spec.title.replace(/[^A-Za-z0-9]+/g, '-');
+    RPT.save(RPT.build(spec), 'Dragon-Empire-' + name + '.pdf');
+  }
+
+  SCREENS.dishes = screenDishes;
+  SCREENS.stock = screenStock;
+  SCREENS.packages = screenPackages;
+  SCREENS.reports = screenReports;
+  SCREENS.settings = showSettings;
+
   async function draw() {
-    if (view === 'settings') { showSettings(); return; }
+    if (SCREENS[view]) { SCREENS[view](); return; }
     if (!rows.length) main.innerHTML = '<div class="muted">Loading…</div>';
     if (await load()) paintList();
   }
 
   [].forEach.call(tabs.querySelectorAll('button'), function (b) {
     b.onclick = function () {
-      menu.hidden = true;            // tapping a tab is also a way out of the menu
+      menu.hidden = true; manage.hidden = true;   // tapping a tab leaves any sheet
+      bar.hidden = false;
       [].forEach.call(tabs.querySelectorAll('button'), function (x) { x.setAttribute('aria-selected', 'false'); });
       b.setAttribute('aria-selected', 'true');
       view = b.dataset.view;
@@ -607,7 +1288,8 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
   // and so is the back gesture, or Escape on a keyboard
   addEventListener('keydown', function (e) {
     if (e.key !== 'Escape') return;
-    if (!menu.hidden) menu.hidden = true;
+    if (!manage.hidden) manage.hidden = true;
+    else if (!menu.hidden) menu.hidden = true;
     else if (!sheet.hidden) { sheet.hidden = true; openInst = null; draw(); }
   });
 
@@ -644,12 +1326,6 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
       opt('size', 'over50',  'Over 50',       F.size === 'over50');
 
     if (filtersOn()) html += '<button class="clear" data-act="clear">Clear all filters</button>';
-
-    html += '<hr><h4>Settings</h4>' +
-      '<button data-act="settings">Alert settings</button>' +
-      '<button data-act="refresh">Refresh now</button>' +
-      '<button data-act="signout" class="danger">Sign out</button>';
-
     panel.innerHTML = html;
     wireMenu();
   }
@@ -667,48 +1343,69 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
           F.range = (F.from || F.to) ? 'custom' : 'today';
         }
         else if (d.act === 'clear') { F = { range:'today', from:'', to:'', sort:'recent', size:'any' }; }
-        else {
-          menu.hidden = true;
-          if (d.act === 'close') { return; }             // changed nothing, just leave
-          if (d.act === 'settings') {
-            view = 'settings';
-            [].forEach.call(tabs.querySelectorAll('button'), function (x) { x.setAttribute('aria-selected', 'false'); });
-            showSettings();
-          } else if (d.act === 'refresh') {
-            if (view === 'settings') {
-              view = 'progress';
-              tabs.querySelector('[data-view="progress"]').setAttribute('aria-selected', 'true');
-            }
-            draw();
-          } else if (d.act === 'signout') {
-            sb.auth.signOut().then(function () { location.reload(); });
-          }
-          return;
-        }
+        else { menu.hidden = true; return; }           // Close: changed nothing, just leave
         menu.hidden = true;
-        if (view === 'settings') {
-          view = 'progress';
-          tabs.querySelector('[data-view="progress"]').setAttribute('aria-selected', 'true');
-        }
+        if (SCREENS[view]) backToList();
         paintList();
       };
     });
   }
 
-  more.onclick = function () {
-    // hang the panel just under the tabs, so the header stays visible
-    var t = tabs.getBoundingClientRect(), s = menu.parentNode.getBoundingClientRect();
-    menu.style.top = Math.max(0, Math.round(t.bottom - s.top)) + 'px';
-    buildMenu();
-    menu.hidden = false;
-  };
+  /* ---------------- Manage ---------------- */
+
+  function buildManage() {
+    managePanel.innerHTML =
+      '<div class="mhead"><span>Manage</span>' +
+        '<button class="x" data-m="close" aria-label="Close">&times;</button></div>' +
+      '<h4>The menu</h4>' +
+      '<button data-m="dishes">Dishes &amp; prices</button>' +
+      '<button data-m="stock">Out of stock</button>' +
+      '<button data-m="packages">Packages &amp; themes</button>' +
+      '<h4>Paperwork</h4>' +
+      '<button data-m="reports">Reports</button>' +
+      '<h4>Settings</h4>' +
+      '<button data-m="settings">Alerts</button>' +
+      '<button data-m="refresh">Refresh now</button>' +
+      '<button data-m="signout" class="danger">Sign out</button>';
+
+    [].forEach.call(managePanel.querySelectorAll('button'), function (b) {
+      b.onclick = function () {
+        manage.hidden = true;
+        var a = b.dataset.m;
+        if (a === 'close') return;
+        if (a === 'signout') { sb.auth.signOut().then(function () { location.reload(); }); return; }
+        if (a === 'refresh') { backToList(); draw(); return; }
+        view = a;
+        [].forEach.call(tabs.querySelectorAll('button'), function (x) { x.setAttribute('aria-selected', 'false'); });
+        bar.hidden = true;
+        draw();
+      };
+    });
+  }
+
+  function backToList() {
+    view = 'progress';
+    bar.hidden = false;
+    tabs.querySelector('[data-view="progress"]').setAttribute('aria-selected', 'true');
+  }
+
+  filtersBtn.onclick = function () { buildMenu(); menu.hidden = false; };
   menu.onclick = function (e) { if (e.target === menu) menu.hidden = true; };
+
+  more.onclick = function () {
+    var t = tabs.getBoundingClientRect(), sh = manage.parentNode.getBoundingClientRect();
+    manage.style.top = Math.max(0, Math.round(t.bottom - sh.top)) + 'px';
+    buildManage();
+    manage.hidden = false;
+  };
+  manage.onclick = function (e) { if (e.target === manage) manage.hidden = true; };
 
   /* ---------------- signing in ---------------- */
 
   function blocked(text) {
     if (login && login.parentNode) login.remove();
     tabs.hidden = true;
+    bar.hidden = true;
     more.hidden = false;
     main.innerHTML = '<div class="err">' + text + '</div>';
   }
@@ -722,11 +1419,11 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
       return;
     }
     if (login && login.parentNode) login.remove();
-    tabs.hidden = false; more.hidden = false;
+    tabs.hidden = false; more.hidden = false; bar.hidden = false;
     draw();
     if (!refresh) {
       refresh = setInterval(function () {
-        if (view !== 'settings' && sheet.hidden && menu.hidden) draw();
+        if (!SCREENS[view] && sheet.hidden && menu.hidden && manage.hidden) draw();
       }, 60000);
     }
   }
