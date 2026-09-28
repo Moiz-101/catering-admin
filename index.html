@@ -159,6 +159,15 @@ label.f input{height:44px;border:1.5px solid #DDD3BF;border-radius:12px;padding:
 .screen .back{background:#EADFC8;border:none;border-radius:10px;height:34px;padding:0 12px;
      font-size:13px;font-weight:700;color:#0E3B33;cursor:pointer;flex-shrink:0}
 .screen .top{display:flex;align-items:center;gap:10px}
+.screen .top h2{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* on a narrow phone the title gives up size before it gives up letters */
+@media (max-width:359px){.screen .top{gap:6px}
+  .screen .top h2{font-size:16px}
+  .screen .top .back{padding:0 8px}
+  .topsel{max-width:112px;font-size:12px;padding:0 4px}}
+.topsel{margin-left:auto;flex-shrink:0;max-width:132px;height:36px;border:1.5px solid #DDD3BF;
+     border-radius:10px;padding:0 6px;font-size:13px;font-weight:700;background:#fff;
+     color:#0E3B33;cursor:pointer}
 .search{height:42px;border:1.5px solid #DDD3BF;border-radius:12px;padding:0 12px;font-size:15px;background:#fff;color:#1B2B27;width:100%}
 .mrow{display:flex;align-items:center;gap:10px;background:#fff;border:1.5px solid #E4D9C2;
      border-radius:13px;padding:9px 11px}
@@ -745,9 +754,10 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
     return true;
   }
 
-  function screenTop(title, extra) {
+  // `right` sits on the same line as the title, pushed to the far corner
+  function screenTop(title, extra, right) {
     return '<div class="top"><button class="back" data-back="1">&larr; Back</button>' +
-           '<h2>' + esc(title) + '</h2></div>' + (extra || '');
+           '<h2>' + esc(title) + '</h2>' + (right || '') + '</div>' + (extra || '');
   }
 
   function wireBack() {
@@ -1500,6 +1510,7 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
      ------------------------------------------------------------------ */
 
   var photoSearch = '';
+  var photoCat = '';          // '' is every course
   var BUCKET = 'dishes';
 
   /* ---- matching a filename to a dish ----
@@ -1654,18 +1665,28 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
     if (!await loadMenu()) return;
 
     var live = menuRows.filter(function (d) { return d.active; });
-    var withPhoto = live.filter(function (d) { return !!d.img; }).length;
+    // the course picked in the corner, then the search box within it
+    var scope = photoCat ? live.filter(function (d) { return d.cat === photoCat; }) : live;
+    var withPhoto = scope.filter(function (d) { return !!d.img; }).length;
     var q = photoSearch.toLowerCase();
-    var list = live.filter(function (d) {
+    var list = scope.filter(function (d) {
       return !q || (d.name + ' ' + courseName(d.cat)).toLowerCase().indexOf(q) !== -1;
     });
 
-    main.innerHTML = screenTop('Dish photos') +
+    var coursePicker = '<select class="topsel" id="pCat" aria-label="Show one course">' +
+      '<option value="">All courses</option>' +
+      COURSES.map(function (c) {
+        return '<option value="' + c[0] + '"' + (photoCat === c[0] ? ' selected' : '') + '>' +
+               esc(c[1]) + '</option>';
+      }).join('') + '</select>';
+
+    main.innerHTML = screenTop('Dish photos', '', coursePicker) +
       '<div class="note">A photo added here is on the customer\'s menu the next time the page loads. ' +
       'Photos are shrunk on this phone before they are sent, so a big camera photo is fine.</div>' +
       '<button class="save" id="pBulk">Upload many photos at once</button>' +
       '<input class="search" id="pQ" placeholder="Search dishes" value="' + esc(photoSearch) + '">' +
-      '<div class="count">' + withPhoto + ' of ' + live.length + ' dishes have a photo</div>' +
+      '<div class="count">' + (photoCat ? esc(courseName(photoCat)) + ' &middot; ' : '') +
+        withPhoto + ' of ' + scope.length + (photoCat ? ' have a photo' : ' dishes have a photo') + '</div>' +
       list.map(function (d) {
         return '<div class="mrow prow" data-row="' + d.id + '">' +
           (d.img ? '<img class="thumb" src="' + esc(d.img) + '" alt="" loading="lazy">'
@@ -1686,6 +1707,11 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
         var n = document.getElementById('pQ');
         if (n) { n.focus(); try { n.setSelectionRange(at, at); } catch (e) {} }
       });
+    };
+
+    document.getElementById('pCat').onchange = function () {
+      photoCat = this.value;
+      screenPhotos();
     };
 
     document.getElementById('pBulk').onclick = function () { view = 'photobulk'; draw(); };
