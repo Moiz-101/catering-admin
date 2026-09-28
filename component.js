@@ -381,14 +381,15 @@ class Component extends DCLogic {
             }
           };
           ['iBowl', 'iDump', 'iRoll', 'iSkew', 'iBread', 'iSweet'].forEach((k) => { o[k] = (k === icon); });
-          // a real photo where we have one, otherwise the drawn icon
+          // the owner's own photo first, then the one built into this page,
+          // and the drawn icon when there is neither
           const byCourse = window.DISH_PHOTOS_BY_COURSE || {};
           const shot = byCourse[x.name + '|' + x.cat + '|' + (x.diet || '')] ||
                        byCourse[x.name + '|' + x.cat] ||
                        (window.DISH_PHOTOS || {})[x.name];
-          o.photo = shot ? 'images/web/' + shot + '.jpg' : '';
-          o.hasPhoto = !!shot;
-          o.noPhoto = !shot;
+          o.photo = x.img || (shot ? 'images/web/' + shot + '.jpg' : '');
+          o.hasPhoto = !!o.photo;
+          o.noPhoto = !o.photo;
           o.zoom = () => this.setState({ zoom: x.id });
           const nt = (st.notes[x.id] || '').trim();
           o.hasNote = on && !!nt;
@@ -753,7 +754,7 @@ class Component extends DCLogic {
     if (Array.isArray(items) && items.length > 20) {
       this.ITEMS = items.map(function (r) {
         return { name: r.name, note: r.note || '', cu: r.cu, cat: r.cat,
-                 diet: r.diet || null, sub: r.sub || '' };
+                 diet: r.diet || null, sub: r.sub || '', img: r.img || '' };
       });
       this.ITEMS.forEach((x, i) => { x.id = 'i' + i; });
     }

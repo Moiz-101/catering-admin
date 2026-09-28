@@ -170,6 +170,26 @@ label.f input{height:44px;border:1.5px solid #DDD3BF;border-radius:12px;padding:
 .p-off{background:#FDECEA;color:#9B1C1C}
 .mrow button{flex-shrink:0;height:32px;padding:0 10px;border-radius:9px;border:1.5px solid #0E3B33;
      background:#fff;color:#0E3B33;font-size:12.5px;font-weight:700;cursor:pointer}
+.p-warn{background:#FBEFD6;color:#8A5A00}
+
+/* ---------- dish photos ---------- */
+.thumb{width:46px;height:46px;flex-shrink:0;border-radius:10px;object-fit:cover;
+     background:#F3EDE0;border:1px solid #E4D9C2;display:block}
+.thumb.none{display:flex;align-items:center;justify-content:center;text-align:center;
+     font-size:9px;font-weight:700;line-height:1.1;color:#A99C7E;letter-spacing:.3px}
+.mini-x{flex-shrink:0;height:32px;min-width:32px;padding:0 8px;border-radius:9px;
+     border:1.5px solid #E5B4AE;background:#fff;color:#9B1C1C;font-size:15px;font-weight:700;cursor:pointer}
+.brow{display:flex;align-items:center;gap:10px;background:#fff;border:1.5px solid #E4D9C2;
+     border-radius:13px;padding:9px 11px}
+.brow.done{opacity:.6}
+.brow .bmid{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:5px}
+.brow .bfile{font-size:12px;font-weight:700;color:#4A5A55;word-break:break-all;line-height:1.25}
+.brow select{height:38px;border:1.5px solid #DDD3BF;border-radius:10px;padding:0 8px;
+     font-size:14px;background:#fff;color:#1B2B27;width:100%;max-width:100%}
+.brow .pill{flex-shrink:0;font-size:10.5px;font-weight:700;padding:3px 8px;border-radius:999px}
+.brow .err,.brow .ok{padding:6px 9px;font-size:11.5px;border-radius:9px}
+.warn{background:#FBEFD6;border:1.5px solid #C9963B;color:#8A5A00;border-radius:9px;
+     padding:6px 9px;font-size:11.5px;font-weight:600}
 .field{display:flex;flex-direction:column;gap:5px;font-size:11px;letter-spacing:1px;
      text-transform:uppercase;font-weight:700;color:#4A5A55}
 .field input,.field select,.field textarea{height:44px;border:1.5px solid #DDD3BF;border-radius:12px;
@@ -1466,8 +1486,374 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
     RPT.save(RPT.build(spec), 'Dragon-Empire-' + name + '.pdf');
   }
 
+
+  /* ---------------- dish photos ----------------
+
+     Photos live in Supabase Storage, not in the website's files, so a photo
+     added here is on the customer's page the next time it loads. Nothing is
+     rebuilt and nothing is deployed.
+
+     Every photo is shrunk and re-encoded here, on the phone, before it is
+     sent. A photo straight off a camera is 4-8MB; what leaves is nearer 150KB.
+     That is the difference between a menu that loads on hotel wifi and one
+     that does not.
+     ------------------------------------------------------------------ */
+
+  var photoSearch = '';
+  var BUCKET = 'dishes';
+
+  /* ---- matching a filename to a dish ----
+
+     The rule is "name the file after the dish", but nobody types a filename
+     that carefully. This strips away everything that is not the dish's name -
+     the extension, "- Copy", "(2)", camera numbers, underscores, accents -
+     and then scores what is left. It proposes; you confirm. It never renames
+     a photo onto a dish on its own. */
+
+  function normName(s) {
+    var t = String(s || '').toLowerCase();
+    // NFD splits an accent off its letter, so dropping everything outside
+    // plain ASCII turns "Puree" and an accented "Puree" into the same thing
+    try { t = t.normalize('NFD').replace(/[^\x00-\x7f]/g, ''); } catch (e) {}
+    t = t.replace(/\.[a-z0-9]{2,5}$/, '');              // .jpg, .jpeg, .heic
+    // "(2)" and "(copy)" are noise, but "(Half)" is how Raan Biryani (Half)
+    // is told apart from Raan Biryani (Special), so that stays as words
+    t = t.replace(/\(\s*(?:\d+|copy(?:\s*\d+)?)\s*\)/g, ' ');
+    t = t.replace(/[()]/g, ' ');
+    t = t.replace(/[_\-]+/g, ' ');
+    t = t.replace(/\b(copy|final|new|edited?|img|image|photo|pic|dsc|pxl|whatsapp|screenshot)\b/g, ' ');
+    t = t.replace(/\b\d{3,}\b/g, ' ');                  // 20240817, IMG 4821
+    t = t.replace(/[^a-z0-9 ]+/g, ' ');
+    return t.replace(/\s+/g, ' ').trim();
+  }
+
+  // how alike two strings are, 0 to 1, by counting shared letter pairs
+  function dice(a, b) {
+    if (!a || !b) return 0;
+    function grams(s) {
+      var m = {}, t = ' ' + s + ' ', i, g;
+      for (i = 0; i < t.length - 1; i++) { g = t.substr(i, 2); m[g] = (m[g] || 0) + 1; }
+      return m;
+    }
+    var A = grams(a), B = grams(b), hit = 0, na = 0, nb = 0, k;
+    for (k in A) na += A[k];
+    for (k in B) nb += B[k];
+    for (k in A) if (B[k]) hit += Math.min(A[k], B[k]);
+    return (na + nb) ? (2 * hit) / (na + nb) : 0;
+  }
+
+  // "chicken tikka" inside "chicken tikka masala" should score well even though
+  // the letter pairs alone would punish the extra word
+  function tokenScore(a, b) {
+    var A = a.split(' ').filter(Boolean), B = b.split(' ').filter(Boolean);
+    if (!A.length || !B.length) return 0;
+    var small = A.length <= B.length ? A : B, big = A.length <= B.length ? B : A;
+    var hit = 0;
+    small.forEach(function (w) { if (big.indexOf(w) !== -1) hit++; });
+    var covered = hit / small.length;
+    return covered === 1 ? 0.80 + 0.15 * (small.length / big.length) : covered * 0.7;
+  }
+
+  function scoreOf(fileNorm, dishNorm) {
+    if (!fileNorm || !dishNorm) return 0;
+    if (fileNorm === dishNorm) return 1;
+    if (fileNorm.replace(/ /g, '') === dishNorm.replace(/ /g, '')) return 0.99;
+    return Math.max(dice(fileNorm, dishNorm), tokenScore(fileNorm, dishNorm));
+  }
+
+  // best dish for one filename, out of the dishes still on the menu
+  function matchDish(filename, pool) {
+    var f = normName(filename), best = null, bestScore = 0, runnerUp = 0;
+    pool.forEach(function (d) {
+      var s = scoreOf(f, normName(d.name));
+      if (s > bestScore) { runnerUp = bestScore; bestScore = s; best = d; }
+      else if (s > runnerUp) runnerUp = s;
+    });
+    return { dish: best, score: bestScore, close: bestScore - runnerUp < 0.06 && bestScore > 0 };
+  }
+
+  /* ---- shrinking, on this phone, before anything is sent ---- */
+
+  function shrink(file, maxSide, quality) {
+    return new Promise(function (resolve, reject) {
+      var done = function (bmp, w, h) {
+        var scale = Math.min(1, maxSide / Math.max(w, h));
+        var cw = Math.max(1, Math.round(w * scale)), ch = Math.max(1, Math.round(h * scale));
+        var cv = document.createElement('canvas');
+        cv.width = cw; cv.height = ch;
+        var ctx = cv.getContext('2d');
+        ctx.fillStyle = '#fff';                 // a PNG's transparency would go black
+        ctx.fillRect(0, 0, cw, ch);
+        ctx.drawImage(bmp, 0, 0, cw, ch);
+        if (bmp.close) try { bmp.close(); } catch (e) {}
+        cv.toBlob(function (b) {
+          if (b) resolve(b); else reject(new Error('could not re-encode'));
+        }, 'image/jpeg', quality);
+      };
+
+      if (window.createImageBitmap) {
+        // from-image keeps a phone photo the right way up
+        createImageBitmap(file, { imageOrientation: 'from-image' })
+          .then(function (bmp) { done(bmp, bmp.width, bmp.height); })
+          .catch(function () { viaImg(); });
+      } else viaImg();
+
+      function viaImg() {
+        var url = URL.createObjectURL(file), im = new Image();
+        im.onload = function () { URL.revokeObjectURL(url); done(im, im.naturalWidth, im.naturalHeight); };
+        im.onerror = function () { URL.revokeObjectURL(url); reject(new Error('not an image this phone can read')); };
+        im.src = url;
+      }
+    });
+  }
+
+  function publicUrl(path) {
+    var r = sb.storage.from(BUCKET).getPublicUrl(path);
+    return (r && r.data && r.data.publicUrl) || '';
+  }
+
+  // the object's path inside the bucket, read back out of the stored address
+  function pathOf(url) {
+    var m = String(url || '').match(/\/object\/public\/dishes\/(.+)$/);
+    return m ? decodeURIComponent(m[1]) : '';
+  }
+
+  /* Put one photo on one dish: shrink, send, point the dish at it, and only
+     then throw the old one away, so a failure anywhere leaves the dish with
+     the photo it already had. */
+  async function setPhoto(dish, file) {
+    var blob = await shrink(file, 1000, 0.82);
+    var path = 'dish/' + dish.id + '-' + Date.now() + '.jpg';
+    var up = await sb.storage.from(BUCKET).upload(path, blob, { contentType: 'image/jpeg', upsert: false });
+    if (up.error) throw new Error(up.error.message);
+
+    var url = publicUrl(path);
+    var r = await sb.from('menu_items').update({ img: url }).eq('id', dish.id);
+    if (r.error) {
+      sb.storage.from(BUCKET).remove([path]);          // do not leave it orphaned
+      throw new Error(r.error.message);
+    }
+    var old = pathOf(dish.img);
+    if (old && old !== path) sb.storage.from(BUCKET).remove([old]);
+    dish.img = url;
+    return url;
+  }
+
+  async function clearPhoto(dish) {
+    var r = await sb.from('menu_items').update({ img: null }).eq('id', dish.id);
+    if (r.error) throw new Error(r.error.message);
+    var old = pathOf(dish.img);
+    if (old) sb.storage.from(BUCKET).remove([old]);
+    dish.img = null;
+  }
+
+  /* ---- one dish at a time ---- */
+
+  async function screenPhotos() {
+    main.innerHTML = '<div class="muted">Loading the menu…</div>';
+    if (!await loadMenu()) return;
+
+    var live = menuRows.filter(function (d) { return d.active; });
+    var withPhoto = live.filter(function (d) { return !!d.img; }).length;
+    var q = photoSearch.toLowerCase();
+    var list = live.filter(function (d) {
+      return !q || (d.name + ' ' + courseName(d.cat)).toLowerCase().indexOf(q) !== -1;
+    });
+
+    main.innerHTML = screenTop('Dish photos') +
+      '<div class="note">A photo added here is on the customer\'s menu the next time the page loads. ' +
+      'Photos are shrunk on this phone before they are sent, so a big camera photo is fine.</div>' +
+      '<button class="save" id="pBulk">Upload many photos at once</button>' +
+      '<input class="search" id="pQ" placeholder="Search dishes" value="' + esc(photoSearch) + '">' +
+      '<div class="count">' + withPhoto + ' of ' + live.length + ' dishes have a photo</div>' +
+      list.map(function (d) {
+        return '<div class="mrow prow" data-row="' + d.id + '">' +
+          (d.img ? '<img class="thumb" src="' + esc(d.img) + '" alt="" loading="lazy">'
+                 : '<span class="thumb none">No<br>photo</span>') +
+          '<div class="nm">' + esc(d.name) +
+            '<small>' + esc(courseName(d.cat)) + ' &middot; ' + (d.cu === 'ch' ? 'Chinese' : 'Indian') + '</small></div>' +
+          '<button data-pick="' + d.id + '">' + (d.img ? 'Change' : 'Add') + '</button>' +
+          (d.img ? '<button class="mini-x" data-drop="' + d.id + '" aria-label="Remove photo">&times;</button>' : '') +
+        '</div>';
+      }).join('') +
+      '<input type="file" id="pFile" accept="image/*" hidden>';
+
+    var qi = document.getElementById('pQ');
+    qi.oninput = function () {
+      photoSearch = qi.value;
+      var at = qi.selectionStart;
+      screenPhotos().then(function () {
+        var n = document.getElementById('pQ');
+        if (n) { n.focus(); try { n.setSelectionRange(at, at); } catch (e) {} }
+      });
+    };
+
+    document.getElementById('pBulk').onclick = function () { view = 'photobulk'; draw(); };
+
+    var picker = document.getElementById('pFile'), pending = null;
+    [].forEach.call(main.querySelectorAll('[data-pick]'), function (b) {
+      b.onclick = function () {
+        pending = menuRows.filter(function (d) { return String(d.id) === b.dataset.pick; })[0];
+        picker.value = '';
+        picker.click();
+      };
+    });
+    picker.onchange = async function () {
+      var f = picker.files && picker.files[0];
+      if (!f || !pending) return;
+      var row = main.querySelector('[data-row="' + pending.id + '"]');
+      var btn = row.querySelector('[data-pick]');
+      btn.disabled = true; btn.textContent = 'Sending…';
+      try {
+        await setPhoto(pending, f);
+        await screenPhotos();
+      } catch (e) {
+        btn.disabled = false; btn.textContent = 'Retry';
+        row.insertAdjacentHTML('afterend', '<div class="err">' + esc(e.message) + '</div>');
+      }
+    };
+
+    [].forEach.call(main.querySelectorAll('[data-drop]'), function (b) {
+      b.onclick = async function () {
+        if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Sure?'; return; }
+        var d = menuRows.filter(function (x) { return String(x.id) === b.dataset.drop; })[0];
+        b.textContent = '…';
+        try { await clearPhoto(d); await screenPhotos(); }
+        catch (e) { b.textContent = '×'; b.dataset.armed = ''; alert(e.message); }
+      };
+    });
+
+    wireBack();
+  }
+
+  /* ---- many at once ---- */
+
+  var bulkRows = null;        // [{ file, name, url, dishId, score, close }]
+
+  async function screenPhotoBulk() {
+    main.innerHTML = '<div class="muted">Loading the menu…</div>';
+    if (!await loadMenu()) return;
+
+    main.innerHTML = screenTop('Upload many photos') +
+      '<div class="note">Choose a whole folder of photos at once. Name each file after the dish ' +
+      '&mdash; <b>Butter Chicken.jpg</b> &mdash; and it will find the dish itself. ' +
+      'Spelling, capitals, spaces, "- Copy" and camera numbers do not matter. ' +
+      'Every match is shown for you to check before anything is sent.</div>' +
+      '<label class="field">Choose the photos<input type="file" id="bFiles" accept="image/*" multiple></label>' +
+      '<div id="bOut"></div>';
+
+    document.getElementById('bFiles').onchange = function (e) {
+      var files = [].slice.call(e.target.files || []);
+      if (!files.length) return;
+      var pool = menuRows.filter(function (d) { return d.active; });
+      if (bulkRows) bulkRows.forEach(function (r) { try { URL.revokeObjectURL(r.url); } catch (x) {} });
+      bulkRows = files.map(function (f) {
+        var m = matchDish(f.name, pool);
+        return { file: f, name: f.name, url: URL.createObjectURL(f),
+                 dishId: m.score >= 0.55 && m.dish ? m.dish.id : '',
+                 score: m.score, close: m.close, done: false, err: '' };
+      });
+      paintBulk();
+    };
+    wireBack();
+  }
+
+  function confidence(r) {
+    if (!r.dishId) return ['p-off', 'no match'];
+    if (r.close) return ['p-warn', 'two dishes fit'];
+    if (r.score >= 0.9) return ['p-on', 'sure'];
+    if (r.score >= 0.7) return ['p-on', 'likely'];
+    return ['p-warn', 'check this'];
+  }
+
+  function paintBulk() {
+    var out = document.getElementById('bOut');
+    var pool = menuRows.filter(function (d) { return d.active; });
+    var opts = '<option value="">— skip this photo —</option>' +
+      COURSES.map(function (c) {
+        var inC = pool.filter(function (d) { return d.cat === c[0]; });
+        if (!inC.length) return '';
+        return '<optgroup label="' + esc(c[1]) + '">' +
+          inC.map(function (d) {
+            return '<option value="' + d.id + '">' + esc(d.name) +
+              (d.diet ? ' (' + (d.diet === 'veg' ? 'veg' : 'non-veg') + ')' : '') + '</option>';
+          }).join('') + '</optgroup>';
+      }).join('');
+
+    // two photos aimed at one dish: the second would quietly replace the first
+    var count = {};
+    bulkRows.forEach(function (r) { if (r.dishId) count[r.dishId] = (count[r.dishId] || 0) + 1; });
+
+    var ready = bulkRows.filter(function (r) { return r.dishId && !r.done; }).length;
+    var unmatched = bulkRows.filter(function (r) { return !r.dishId; }).length;
+
+    out.innerHTML =
+      '<div class="count">' + bulkRows.length + ' photo' + (bulkRows.length === 1 ? '' : 's') +
+        ' &middot; ' + ready + ' ready' + (unmatched ? ' &middot; ' + unmatched + ' need a dish' : '') + '</div>' +
+      bulkRows.map(function (r, i) {
+        var c = confidence(r);
+        return '<div class="brow' + (r.done ? ' done' : '') + '">' +
+          '<img class="thumb" src="' + esc(r.url) + '" alt="">' +
+          '<div class="bmid">' +
+            '<div class="bfile">' + esc(r.name) + '</div>' +
+            (r.done ? '<div class="ok">On the menu</div>'
+                    : '<select data-pick="' + i + '">' + opts + '</select>') +
+            (r.err ? '<div class="err">' + esc(r.err) + '</div>' : '') +
+            (!r.done && r.dishId && count[r.dishId] > 1
+              ? '<div class="warn">Another photo is going to this dish too</div>' : '') +
+          '</div>' +
+          '<span class="pill ' + c[0] + '">' + c[1] + '</span>' +
+        '</div>';
+      }).join('') +
+      (ready ? '<button class="save" id="bGo">Upload ' + ready + ' photo' + (ready === 1 ? '' : 's') + '</button>' : '') +
+      '<div id="bMsg"></div>';
+
+    [].forEach.call(out.querySelectorAll('[data-pick]'), function (s) {
+      s.value = bulkRows[+s.dataset.pick].dishId || '';
+      s.onchange = function () {
+        var r = bulkRows[+s.dataset.pick];
+        r.dishId = s.value;
+        r.score = s.value ? 1 : 0;       // you chose it, so it is right
+        r.close = false;
+        paintBulk();
+      };
+    });
+
+    var go = document.getElementById('bGo');
+    if (go) go.onclick = runBulk;
+  }
+
+  async function runBulk() {
+    var go = document.getElementById('bGo'), msg = document.getElementById('bMsg');
+    go.disabled = true;
+    var todo = bulkRows.filter(function (r) { return r.dishId && !r.done; });
+    var ok = 0, failed = 0;
+
+    for (var i = 0; i < todo.length; i++) {
+      var r = todo[i];
+      msg.className = 'note';
+      msg.textContent = 'Sending ' + (i + 1) + ' of ' + todo.length + '…';
+      var dish = menuRows.filter(function (d) { return String(d.id) === String(r.dishId); })[0];
+      try {
+        await setPhoto(dish, r.file);
+        r.done = true; r.err = ''; ok++;
+      } catch (e) {
+        r.err = e.message; failed++;
+      }
+    }
+
+    paintBulk();
+    var m = document.getElementById('bMsg');
+    m.className = failed ? 'err' : 'ok';
+    m.textContent = ok + ' photo' + (ok === 1 ? '' : 's') + ' added' +
+      (failed ? ', ' + failed + ' did not go through - they are still listed above, try them again'
+              : '. Customers see them now.');
+  }
+
   SCREENS.dishes = screenDishes;
   SCREENS.upload = screenUpload;
+  SCREENS.photos = screenPhotos;
+  SCREENS.photobulk = screenPhotoBulk;
   SCREENS.stock = screenStock;
   SCREENS.packages = screenPackages;
   SCREENS.reports = screenReports;
@@ -1566,6 +1952,7 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
       '<button data-m="dishes">Dishes &amp; prices</button>' +
       '<button data-m="stock">Out of stock</button>' +
       '<button data-m="upload">Upload a whole menu</button>' +
+      '<button data-m="photos">Dish photos</button>' +
       '<button data-m="packages">Packages &amp; themes</button>' +
       '<h4>Paperwork</h4>' +
       '<button data-m="reports">Reports</button>' +
