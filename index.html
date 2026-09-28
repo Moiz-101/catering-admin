@@ -87,31 +87,30 @@ header .more.on::before{content:'';position:absolute;width:9px;height:9px;border
 #menu .danger{color:#9B1C1C}
 #menu hr{border:none;border-top:1px solid #E4D9C2;margin:6px 0}
 
-/* ---------- the three status tabs ---------- */
+/* ---------- the two status tabs ---------- */
 #tabs[hidden]{display:none}
 #tabs{display:flex;gap:6px;padding:8px 16px;background:#EADFC8;border-bottom:1px solid #D9CBAB;flex-shrink:0}
 #tabs button{flex:1 1 0;min-width:0;height:40px;border-radius:11px;border:none;cursor:pointer;
      font-size:13px;font-weight:700;color:#0E3B33;background:transparent;
      display:flex;align-items:center;justify-content:center;gap:6px;padding:0 6px}
 #tabs button[aria-selected="true"]{background:#FFFFFF;box-shadow:0 1px 3px rgba(14,59,51,.18)}
-#tabs .badge{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;
-     padding:0 6px;border-radius:999px;background:#C62828;color:#fff;font-size:12px;font-weight:700;flex-shrink:0}
-#tabs .badge[hidden]{display:none}
-#tabs button.hot{color:#9B1C1C}
-#tabs button.hot[aria-selected="true"]{background:#FDECEA;box-shadow:inset 0 0 0 1.5px #C62828}
 
 main{flex-grow:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;
      padding:14px 16px 28px 16px;display:flex;flex-direction:column;gap:10px}
 main > *,#sheetBody > *{flex-shrink:0}
 
 .card{background:#fff;border:1.5px solid #E4D9C2;border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
-.card.unseen{border-color:#C62828;box-shadow:0 0 0 1px #C62828 inset}
+/* an order you have not opened yet: the date stamp turns red and grows a dot */
+.card.unseen{border-color:#F0CBC6}
 .row{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
 .name{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:19px;line-height:1.15;color:#0E3B33}
 .meta{font-size:13.5px;line-height:1.45;color:#4A5A55}
 .meta b{color:#1B2B27;font-weight:700}
 .when{font-size:11.5px;font-weight:700;color:#5A6863;white-space:nowrap;flex-shrink:0;
      background:#F3EDE0;border:1px solid #E4D9C2;border-radius:8px;padding:3px 8px}
+.card.unseen .when{background:#FDECEA;border-color:#E9B4AE;color:#9B1C1C}
+.when .newdot{display:inline-block;width:7px;height:7px;border-radius:50%;
+     background:#C62828;margin-right:5px;vertical-align:1px}
 .ref{font-size:12px;font-weight:700;letter-spacing:.5px;color:#6A4E12}
 
 /* ---------- the 5-step bar, same shape as the customer sees ---------- */
@@ -218,7 +217,6 @@ label.f input{height:44px;border:1.5px solid #DDD3BF;border-radius:12px;padding:
   <div id="tabs" hidden>
     <button data-view="progress" aria-selected="true">In Progress</button>
     <button data-view="confirmed" aria-selected="false">Confirmed</button>
-    <button data-view="new" class="hot" aria-selected="false">New <span class="badge" id="badge" hidden>0</span></button>
   </div>
 
   <main id="main">
@@ -277,7 +275,6 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
 
   var main   = document.getElementById('main');
   var tabs   = document.getElementById('tabs');
-  var badge  = document.getElementById('badge');
   var menu   = document.getElementById('menu');
   var more   = document.getElementById('more');          // Manage, in the header
   var bar    = document.getElementById('bar');           // the filter bar at the foot
@@ -289,7 +286,7 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
   var sheet  = document.getElementById('sheet');
   var sheetBody = document.getElementById('sheetBody');
 
-  var view = 'progress';       // progress | confirmed | new | settings
+  var view = 'progress';       // progress | confirmed | settings and the Manage screens
   var rows = [];               // every lead, newest first
   var openInst = null;
   var refresh = null;
@@ -452,9 +449,22 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
   async function markSeen(l) {
     if (l.status !== 'completed' || l.seen_at) return;
     l.seen_at = new Date().toISOString();       // update the screen straight away
-    paintBadge();
+    paintSeen(l);
     var r = await sb.from('leads').update({ seen_at: l.seen_at }).eq('session_id', l.session_id);
-    if (r.error) { l.seen_at = null; paintBadge(); }   // put it back if it did not save
+    if (r.error) { l.seen_at = null; paintSeen(l); }   // put it back if it did not save
+  }
+
+  // Turn one card's red marker on or off where it stands, without redrawing
+  // the list under the open order sheet.
+  function paintSeen(l) {
+    var card = main.querySelector('[data-sid="' + l.session_id + '"]');
+    if (!card) return;
+    card.classList.toggle('unseen', !l.seen_at);
+    var when = card.querySelector('.when');
+    if (!when) return;
+    var dot = when.querySelector('.newdot');
+    if (l.seen_at) { if (dot) dot.parentNode.removeChild(dot); }
+    else if (!dot) when.insertAdjacentHTML('afterbegin', '<i class="newdot"></i>');
   }
 
   function showSheet(l) {
@@ -564,9 +574,10 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
   function orderCard(l, i) {
     var totals = (l.details || {}).totals || {};
     var unseen = !l.seen_at;
-    return '<div class="card' + (unseen ? ' unseen' : '') + '">' +
+    return '<div class="card' + (unseen ? ' unseen' : '') + '" data-sid="' + esc(l.session_id) + '">' +
       '<div class="row"><div class="name">' + esc(l.name || 'No name') + '</div>' +
-        '<span class="when">' + esc(stamp(l.completed_at || l.updated_at)) + '</span></div>' +
+        '<span class="when">' + (unseen ? '<i class="newdot"></i>' : '') +
+          esc(stamp(l.completed_at || l.updated_at)) + '</span></div>' +
       '<div class="meta"><b>' + esc(shortLine(l)) + '</b></div>' +
       '<div class="row"><span class="ref">' + esc(l.ref || 'No number') + '</span>' +
         (totals.grandText ? '<span class="meta"><b>' + esc(totals.grandText) + '</b></span>' : '') + '</div>' +
@@ -576,15 +587,15 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
 
   /* ---------------- the lists ---------------- */
 
-  function unseenOrders() {
-    // never hidden by the date filter: an unchecked order always matters
-    return rows.filter(function (l) { return l.status === 'completed' && !l.seen_at; });
-  }
-
-  function paintBadge() {
-    var n = unseenOrders().length;
-    badge.textContent = n;
-    badge.hidden = (n === 0);
+  /* Confirmed orders for the chosen dates, plus any order you have not opened
+     yet even when it falls outside them, because an unchecked order is the one
+     thing the filter must never hide. Unopened ones sit at the top. */
+  function confirmedList() {
+    var done = rows.filter(function (l) { return l.status === 'completed'; });
+    var shown = sift(done);
+    var missed = done.filter(function (l) { return !l.seen_at && shown.indexOf(l) === -1; });
+    var inRange = shown.filter(function (l) { return l.seen_at; });
+    return shown.filter(function (l) { return !l.seen_at; }).concat(missed).concat(inRange);
   }
 
   function shortDay(ymd) {
@@ -628,17 +639,11 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
       var open = sift(rows.filter(function (l) { return l.status !== 'completed'; }));
       main.innerHTML = listOf(open,
         'Nobody part way through in this period.' + widen, progressCard, rangeLabel());
-    } else if (view === 'confirmed') {
-      var done = sift(rows.filter(function (l) { return l.status === 'completed'; }));
-      main.innerHTML = listOf(done, 'No confirmed orders in this period.' + widen,
-        orderCard, rangeLabel());
     } else {
-      // never narrowed by dates: an order you have not opened always matters
-      main.innerHTML = listOf(unseenOrders(),
-        'All caught up. Every order has been opened.', orderCard);
+      main.innerHTML = listOf(confirmedList(), 'No confirmed orders in this period.' + widen,
+        orderCard, rangeLabel());
     }
     wireCards();
-    paintBadge();
   }
 
   /* ---------------- alert settings ---------------- */
