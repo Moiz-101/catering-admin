@@ -297,6 +297,7 @@ window.DCLogic.prototype.setState = function (o) {
 };
 window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
 </script>
+<script src="photos.js"></script>
 <script src="component.js"></script>
 <script src="reports.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
@@ -1509,6 +1510,21 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
      that does not.
      ------------------------------------------------------------------ */
 
+  var SITE = 'https://order.dubaicateringservice.com';
+
+  /* What the customer actually sees for this dish: the photo uploaded here
+     first, then the one built into the customer's page, then nothing. Without
+     the second of those the panel reported "No photo" for 135 dishes that
+     have had one all along. */
+  function photoOf(d) {
+    if (d.img) return { url: d.img, mine: true };
+    var byCourse = window.DISH_PHOTOS_BY_COURSE || {};
+    var slug = byCourse[d.name + '|' + d.cat + '|' + (d.diet || '')] ||
+               byCourse[d.name + '|' + d.cat] ||
+               (window.DISH_PHOTOS || {})[d.name];
+    return slug ? { url: SITE + '/images/web/' + slug + '.jpg', mine: false } : null;
+  }
+
   var photoSearch = '';
   var photoCat = '';          // '' is every course
   var BUCKET = 'dishes';
@@ -1667,7 +1683,7 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
     var live = menuRows.filter(function (d) { return d.active; });
     // the course picked in the corner, then the search box within it
     var scope = photoCat ? live.filter(function (d) { return d.cat === photoCat; }) : live;
-    var withPhoto = scope.filter(function (d) { return !!d.img; }).length;
+    var withPhoto = scope.filter(function (d) { return !!photoOf(d); }).length;
     var q = photoSearch.toLowerCase();
     var list = scope.filter(function (d) {
       return !q || (d.name + ' ' + courseName(d.cat)).toLowerCase().indexOf(q) !== -1;
@@ -1688,13 +1704,17 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
       '<div class="count">' + (photoCat ? esc(courseName(photoCat)) + ' &middot; ' : '') +
         withPhoto + ' of ' + scope.length + (photoCat ? ' have a photo' : ' dishes have a photo') + '</div>' +
       list.map(function (d) {
+        var ph = photoOf(d);
         return '<div class="mrow prow" data-row="' + d.id + '">' +
-          (d.img ? '<img class="thumb" src="' + esc(d.img) + '" alt="" loading="lazy">'
-                 : '<span class="thumb none">No<br>photo</span>') +
+          (ph ? '<img class="thumb" src="' + esc(ph.url) + '" alt="" loading="lazy">'
+              : '<span class="thumb none">No<br>photo</span>') +
           '<div class="nm">' + esc(d.name) +
-            '<small>' + esc(courseName(d.cat)) + ' &middot; ' + (d.cu === 'ch' ? 'Chinese' : 'Indian') + '</small></div>' +
-          '<button data-pick="' + d.id + '">' + (d.img ? 'Change' : 'Add') + '</button>' +
-          (d.img ? '<button class="mini-x" data-drop="' + d.id + '" aria-label="Remove photo">&times;</button>' : '') +
+            '<small>' + esc(courseName(d.cat)) + ' &middot; ' + (d.cu === 'ch' ? 'Chinese' : 'Indian') +
+            (ph && !ph.mine ? ' &middot; original' : '') + '</small></div>' +
+          '<button data-pick="' + d.id + '">' + (ph ? 'Change' : 'Add') + '</button>' +
+          // only a photo added here can be taken away; removing it falls back
+          // to the original rather than leaving the dish blank
+          (d.img ? '<button class="mini-x" data-drop="' + d.id + '" aria-label="Undo my photo">&times;</button>' : '') +
         '</div>';
       }).join('') +
       '<input type="file" id="pFile" accept="image/*" hidden>';
@@ -1886,7 +1906,10 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
   SCREENS.settings = showSettings;
 
   async function draw() {
-    if (SCREENS[view]) { SCREENS[view](); return; }
+    // every Manage screen rule is written ".screen ...", so the class has to
+    // be on main before one of them paints
+    if (SCREENS[view]) { main.className = 'screen'; SCREENS[view](); return; }
+    main.className = '';
     if (!rows.length) main.innerHTML = '<div class="muted">Loading…</div>';
     if (await load()) paintList();
   }
