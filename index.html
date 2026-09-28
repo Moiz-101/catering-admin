@@ -103,7 +103,12 @@ main > *,#sheetBody > *{flex-shrink:0}
 /* an order you have not opened yet: the date stamp turns red and grows a dot */
 .card.unseen{border-color:#F0CBC6}
 .row{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
-.name{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:19px;line-height:1.15;color:#0E3B33}
+.name{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:19px;line-height:1.15;color:#0E3B33;
+     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+/* name, then the event date and headcount, then the stamp - all on one line.
+   A long name gives way first, because the whole of it is in the order sheet. */
+.who{display:flex;align-items:baseline;gap:8px;min-width:0;flex:1 1 auto;overflow:hidden}
+.ev{font-size:13.5px;font-weight:700;color:#1B2B27;white-space:nowrap;flex-shrink:0}
 .meta{font-size:13.5px;line-height:1.45;color:#4A5A55}
 .meta b{color:#1B2B27;font-weight:700}
 .when{font-size:11.5px;font-weight:700;color:#5A6863;white-space:nowrap;flex-shrink:0;
@@ -548,7 +553,7 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
     '</div>';
   }
 
-  // "19/10/26, 26/pax" - short enough to sit on one line under the name
+  // "19/10/26, 26/pax" - short enough to sit beside the name on one line
   function shortLine(l) {
     var bits = [];
     if (l.event_date) {
@@ -563,9 +568,9 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
 
   function progressCard(l, i) {
     return '<div class="card">' +
-      '<div class="row"><div class="name">' + esc(l.name || 'No name') + '</div>' +
+      '<div class="row"><div class="who"><span class="name">' + esc(l.name || 'No name') + '</span>' +
+          '<span class="ev">' + esc(shortLine(l)) + '</span></div>' +
         '<span class="when">' + esc(stamp(l.updated_at)) + '</span></div>' +
-      '<div class="meta"><b>' + esc(shortLine(l)) + '</b></div>' +
       stepBar(l) +
       buttons(l, i) +
     '</div>';
@@ -575,10 +580,10 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
     var totals = (l.details || {}).totals || {};
     var unseen = !l.seen_at;
     return '<div class="card' + (unseen ? ' unseen' : '') + '" data-sid="' + esc(l.session_id) + '">' +
-      '<div class="row"><div class="name">' + esc(l.name || 'No name') + '</div>' +
+      '<div class="row"><div class="who"><span class="name">' + esc(l.name || 'No name') + '</span>' +
+          '<span class="ev">' + esc(shortLine(l)) + '</span></div>' +
         '<span class="when">' + (unseen ? '<i class="newdot"></i>' : '') +
           esc(stamp(l.completed_at || l.updated_at)) + '</span></div>' +
-      '<div class="meta"><b>' + esc(shortLine(l)) + '</b></div>' +
       '<div class="row"><span class="ref">' + esc(l.ref || 'No number') + '</span>' +
         (totals.grandText ? '<span class="meta"><b>' + esc(totals.grandText) + '</b></span>' : '') + '</div>' +
       buttons(l, i) +
