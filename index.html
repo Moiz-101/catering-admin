@@ -324,6 +324,7 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
   var view = 'progress';       // progress | confirmed | settings and the Manage screens
   var rows = [];               // every lead, newest first
   var openInst = null;
+  var openSid = '';          // the order whose sheet is open
   var refresh = null;
 
   // what the menu is currently narrowing the lists down to
@@ -510,6 +511,7 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
     }
     markSeen(l);
     openInst = inst;
+    openSid = l.session_id;
     var S = inst.summary();
     document.getElementById('sheetRef').textContent = S.ref;
 
@@ -550,11 +552,10 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
     sheetBody.innerHTML = html;
     sheetBody.scrollTop = 0;
     sheet.hidden = false;
+    navSync();
   }
 
-  document.getElementById('sheetBack').onclick = function () {
-    sheet.hidden = true; openInst = null; draw();
-  };
+  document.getElementById('sheetBack').onclick = function () { navBack(); };
 
   document.getElementById('sheetPdf').onclick = function () {
     if (!openInst) return;
@@ -763,7 +764,7 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
 
   function wireBack() {
     var b = main.querySelector('[data-back]');
-    if (b) b.onclick = function () { backToList(); draw(); };
+    if (b) b.onclick = function () { navBack(); };
   }
 
   /* ---------------- dishes ---------------- */
@@ -851,7 +852,8 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
       '<div id="dMsg"></div>' +
       '<div class="note">Switching a dish off, or out of stock, hides it from customers straight away. Removing it cannot be undone.</div>';
 
-    main.querySelector('[data-cancel]').onclick = function () { editing = null; screenDishes(); };
+    main.querySelector('[data-cancel]').onclick = function () { navBack(); };
+    navSync();
 
     document.getElementById('dSave').onclick = async function () {
       var msg = document.getElementById('dMsg');
@@ -876,6 +878,7 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
         return;
       }
       editing = null;
+      navSync();
       screenDishes();
     };
 
@@ -889,6 +892,7 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
       var r = await sb.from('menu_items').delete().eq('id', d.id);
       if (r.error) { document.getElementById('dMsg').className = 'err'; document.getElementById('dMsg').textContent = r.error.message; return; }
       editing = null;
+      navSync();
       screenDishes();
     };
   }
@@ -1905,11 +1909,114 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
   SCREENS.reports = screenReports;
   SCREENS.settings = showSettings;
 
+
+  /* ---------------- the phone's Back button ----------------
+
+     The panel is one web page, so Back would otherwise close it outright,
+     from the middle of a report or with an order sheet open. This keeps a
+     list of the places you have been and steps back through them instead.
+
+     A "place" is which tab or Manage screen is showing, which dish is being
+     edited, which order sheet is open, and whether the filter or Manage
+     sheet is down. Filters, searches and anything half-typed are not part
+     of it, so stepping back never undoes them.
+
+     Everything that closes something goes through navBack, so the list and
+     the browser never disagree about where you are.
+     ------------------------------------------------------------------ */
+
+  var navStack = [], navIdx = -1, navBusy = false;
+
+  function editId() { return editing ? String(editing.id || 'new') : ''; }
+
+  function placeNow() {
+    return { view: view, editing: editId(), sheet: sheet.hidden ? '' : (openSid || ''),
+             menu: !menu.hidden, manage: !manage.hidden };
+  }
+
+  function samePlace(a, b) {
+    return a.view === b.view && a.editing === b.editing && a.sheet === b.sheet &&
+           a.menu === b.menu && a.manage === b.manage;
+  }
+
+  function navSync() {
+    if (navBusy) return;
+    var p = placeNow();
+    if (navIdx >= 0 && samePlace(p, navStack[navIdx])) return;
+
+    // the panel moved back a step by itself: unwind rather than pile on
+    if (navIdx > 0 && samePlace(p, navStack[navIdx - 1])) {
+      navIdx--;
+      try { history.back(); } catch (e) {}
+      return;
+    }
+
+    navStack = navStack.slice(0, navIdx + 1);
+    navStack.push(p);
+    navIdx = navStack.length - 1;
+    try {
+      if (navIdx === 0) history.replaceState({ dcAdmin: 0 }, '');
+      else history.pushState({ dcAdmin: navIdx }, '');
+    } catch (e) {}
+  }
+
+  function shutOverlays() {
+    manage.hidden = true;
+    menu.hidden = true;
+    if (!sheet.hidden) { sheet.hidden = true; openInst = null; openSid = ''; }
+  }
+
+  function navBack() {
+    if (navIdx > 0) { try { history.back(); return; } catch (e) {} }
+    // nothing of ours left to step back to, so land on the list
+    shutOverlays();
+    if (view !== 'progress' || editing) { editing = null; backToList(); draw(); }
+  }
+
+  function navApply(p) {
+    navBusy = true;
+
+    manage.hidden = !p.manage;
+    menu.hidden = !p.menu;
+    if (p.manage) buildManage();
+    if (p.menu) buildMenu();
+    if (!p.sheet && !sheet.hidden) { sheet.hidden = true; openInst = null; openSid = ''; }
+
+    if (p.view !== view || p.editing !== editId()) {
+      view = p.view;
+      editing = !p.editing ? null
+        : (p.editing === 'new' ? editing
+          : menuRows.filter(function (d) { return String(d.id) === p.editing; })[0] || null);
+      bar.hidden = !!SCREENS[view];
+      // the highlighted tab is set where tabs are tapped, so stepping back
+      // has to move it too or it points at the tab you just left
+      [].forEach.call(tabs.querySelectorAll('button'), function (x) {
+        x.setAttribute('aria-selected', String(x.dataset.view === view));
+      });
+      draw();
+    }
+
+    if (p.sheet && p.sheet !== openSid) {
+      var l = rows.filter(function (x) { return x.session_id === p.sheet; })[0];
+      if (l) showSheet(l);          // gone from the list: leave the sheet closed
+    }
+
+    navBusy = false;
+  }
+
+  addEventListener('popstate', function (e) {
+    var i = e.state && typeof e.state.dcAdmin === 'number' ? e.state.dcAdmin : -1;
+    if (i < 0 || i >= navStack.length) return;      // somebody else's entry
+    navIdx = i;
+    navApply(navStack[i]);
+  });
+
   async function draw() {
     // every Manage screen rule is written ".screen ...", so the class has to
     // be on main before one of them paints
-    if (SCREENS[view]) { main.className = 'screen'; SCREENS[view](); return; }
+    if (SCREENS[view]) { main.className = 'screen'; navSync(); SCREENS[view](); return; }
     main.className = '';
+    navSync();
     if (!rows.length) main.innerHTML = '<div class="muted">Loading…</div>';
     if (await load()) paintList();
   }
@@ -1921,16 +2028,15 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
       [].forEach.call(tabs.querySelectorAll('button'), function (x) { x.setAttribute('aria-selected', 'false'); });
       b.setAttribute('aria-selected', 'true');
       view = b.dataset.view;
+      navSync();
       paintList();
     };
   });
 
-  // and so is the back gesture, or Escape on a keyboard
+  // Escape does exactly what the phone's Back button does
   addEventListener('keydown', function (e) {
     if (e.key !== 'Escape') return;
-    if (!manage.hidden) manage.hidden = true;
-    else if (!menu.hidden) menu.hidden = true;
-    else if (!sheet.hidden) { sheet.hidden = true; openInst = null; draw(); }
+    if (!manage.hidden || !menu.hidden || !sheet.hidden || SCREENS[view]) navBack();
   });
 
   /* ---------------- the filter menu ---------------- */
@@ -1983,8 +2089,8 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
           F.range = (F.from || F.to) ? 'custom' : 'today';
         }
         else if (d.act === 'clear') { F = { range:'today', from:'', to:'', sort:'recent', size:'any' }; }
-        else { menu.hidden = true; return; }           // Close: changed nothing, just leave
-        menu.hidden = true;
+        else { navBack(); return; }                    // Close: changed nothing, just leave
+        navBack();
         if (SCREENS[view]) backToList();
         paintList();
       };
@@ -2031,16 +2137,17 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
     tabs.querySelector('[data-view="progress"]').setAttribute('aria-selected', 'true');
   }
 
-  filtersBtn.onclick = function () { buildMenu(); menu.hidden = false; };
-  menu.onclick = function (e) { if (e.target === menu) menu.hidden = true; };
+  filtersBtn.onclick = function () { buildMenu(); menu.hidden = false; navSync(); };
+  menu.onclick = function (e) { if (e.target === menu) navBack(); };
 
   more.onclick = function () {
     var t = tabs.getBoundingClientRect(), sh = manage.parentNode.getBoundingClientRect();
     manage.style.top = Math.max(0, Math.round(t.bottom - sh.top)) + 'px';
     buildManage();
     manage.hidden = false;
+    navSync();
   };
-  manage.onclick = function (e) { if (e.target === manage) manage.hidden = true; };
+  manage.onclick = function (e) { if (e.target === manage) navBack(); };
 
   /* ---------------- signing in ---------------- */
 
