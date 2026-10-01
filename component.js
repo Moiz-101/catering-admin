@@ -1,7 +1,7 @@
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { screen: null, name: '', cc: '+971', phone: '', emirate: '', date: '', time: '', pax: 18, paxEdit: null, pureVeg: false, minWarn: false, custMinOk: false, detailsWarn: false, type: null, layout: null, venue: null, cuisine: 'ic', pkg: null, theme: null, themeView: null, eventNote: '', returnTo: null, pdfMsg: '', zoom: null, notes: {}, noteFor: null, noteDraft: '', consent: false, setupEdit: null, tab: 'starters', fcu: 'all', sub: 0, note: '', sel: {}, selKey: '' };
+    this.state = { screen: null, name: '', cc: '+971', phone: '', emirate: '', date: '', time: '', pax: 18, paxEdit: null, pureVeg: false, minWarn: false, custMinOk: false, detailsWarn: false, type: null, layout: null, venue: null, cuisine: 'ic', pkg: null, theme: null, themeView: null, eventNote: '', returnTo: null, pdfMsg: '', zoom: null, notes: {}, noteFor: null, noteDraft: '', consent: false, setupEdit: null, counters: {}, tab: 'starters', fcu: 'all', sub: 0, note: '', sel: {}, selKey: '' };
     // Dummy photo tiles for now; real photos replace the glyph tile later.
     this.ITEMS = [];
     const add = (cu, cat, diet, sub, list) => list.forEach((n) => {
@@ -113,6 +113,37 @@ class Component extends DCLogic {
         { sv: 3, snv: 3, mv: 2, mnv: 3, rc: 2, nd: 1, ds: 3 }
       ]
     };
+    /* Live counters, offered when there is a live station. Grouped so the
+       list reads at a glance rather than as sixteen rows, and ordered with
+       the ones most often asked for at the top of each group. */
+    this.COUNTERS = [
+      { group: 'Grill & BBQ', items: [
+        { id: 'bbq', name: 'BBQ Counter', icon: 'flame' },
+        { id: 'shawarma', name: 'Shawarma Counter', icon: 'skew' },
+        { id: 'tandoor', name: 'Tandoor Counter', icon: 'flame' },
+        { id: 'tawa', name: 'Tawa Counter', icon: 'pan' },
+        { id: 'sizzler', name: 'Sizzler Counter', icon: 'pan' }
+      ] },
+      { group: 'Indian street food', items: [
+        { id: 'chaat', name: 'Chaat Counter', icon: 'bowl' },
+        { id: 'chole', name: 'Amritsari Chole Kulche', icon: 'bread' },
+        { id: 'makki', name: 'Makki di Roti - Sarson da Saag', icon: 'bread' }
+      ] },
+      { group: 'Asian', items: [
+        { id: 'dimsum', name: 'Dimsum Counter', icon: 'dump' },
+        { id: 'bao', name: 'Bao Counter', icon: 'dump' },
+        { id: 'sushi', name: 'Sushi Counter', icon: 'roll' },
+        { id: 'wok', name: 'Oriental Wok Station', icon: 'pan' },
+        { id: 'khowsuey', name: 'Khow Suey', icon: 'bowl' }
+      ] },
+      { group: 'Italian', items: [
+        { id: 'pasta', name: 'Pasta Counter', icon: 'bowl' },
+        { id: 'pizza', name: 'Pizza Counter', icon: 'slice' }
+      ] },
+      { group: 'Drinks', items: [
+        { id: 'mocktail', name: 'Mocktail Bar', icon: 'glass' }
+      ] }
+    ];
     // Choices allowed per package, from the menu sheet
     this.Q = {
       '1': { sv: 1, snv: 2, mv: 1, mnv: 1, rn: 1, bb: 1, ds: 1 },
@@ -639,6 +670,8 @@ class Component extends DCLogic {
       layoutLabel: this.layoutLabelOf(st.layout) || 'Not selected',
       venueLabel: st.venue === 'indoor' ? 'Indoor' : (st.venue === 'outdoor' ? 'Outdoor' : 'Not selected'),
       isOnsite: st.type === 'onsite',
+      hasCounters: this.hasCounters(),
+      countersText: this.pickedCounters().join(', ') || 'None chosen',
       pkgLabel: isCustom ? 'Custom menu' : (hasPkg ? 'Package ' + (st.pkg + 1) : 'Not selected'),
       cuisine: cuisine + (st.pureVeg ? ' (Pure Veg)' : ''),
       ppText: pp > 0 ? pp + ' Dh' : (this.priced() ? '-' : 'On request'),
@@ -721,7 +754,7 @@ class Component extends DCLogic {
       ['Event', S.when], ['Guests', S.pax + (S.veg === 'Yes' ? ' - pure veg' : '')],
       ['Service', S.isOnsite ? S.typeLabel + ', ' + S.layoutLabel + ', ' + S.venueLabel : S.typeLabel],
       ['Selection', S.pkgLabel + ' - ' + S.cuisine]
-    ];
+    ].concat(S.hasCounters ? [['Live counters', S.countersText]] : []);
     const half = CW / 2, gutter = 22;
     pairs.forEach((p, i) => {
       const x = IM + (i % 2) * half;
@@ -941,6 +974,17 @@ class Component extends DCLogic {
     const col = (this.PRICES[this.state.cuisine] || {})[setup || this.setupKey()];
     return !!(col && col.length && col.some((v) => +v > 0));
   }
+  // a live station means there are counters to choose
+  hasCounters() {
+    const l = this.state.layout;
+    return this.state.type === 'onsite' && (l === 'live' || l === 'both');
+  }
+  pickedCounters() {
+    const on = this.state.counters || {};
+    const out = [];
+    this.COUNTERS.forEach((g) => g.items.forEach((c) => { if (on[c.id]) out.push(c.name); }));
+    return out;
+  }
   typeLabelOf(t) {
     return t === 'delivery' ? 'Delivery' : (t === 'onsite' ? 'Onsite Catering' : '');
   }
@@ -956,6 +1000,7 @@ class Component extends DCLogic {
     const sReady = st.type === 'delivery' || (isOnsite && !!st.layout && !!st.venue);
     // a question is open while it has no answer, or while the pencil is on it
     const edit = st.setupEdit || null;
+    const nCounters = Object.keys(st.counters || {}).length;
     const typeOpen = !st.type || edit === 'type';
     const layoutOpen = !typeOpen && (!st.layout || edit === 'layout');
     const venueOpen = !typeOpen && !layoutOpen && (!st.venue || edit === 'venue');
@@ -1029,8 +1074,10 @@ class Component extends DCLogic {
         go(ret ? 'review' : 'setup', true);
       },
       backSetup: () => go(ret ? 'review' : 'details', true),
-      nextFromSetup: () => go(ret ? 'review' : 'pkg', true),
-      backPkg: () => go(ret ? 'review' : 'setup', true),
+      nextFromSetup: () => go(ret ? 'review' : (this.hasCounters() ? 'counters' : 'pkg'), true),
+      backCounters: () => go(ret ? 'review' : 'setup', true),
+      nextFromCounters: () => go(ret ? 'review' : 'pkg', true),
+      backPkg: () => go(ret ? 'review' : (this.hasCounters() ? 'counters' : 'setup'), true),
       nextFromPkg: () => {
         if (this.pkgVals().belowMin && !st.consent) { this.setState({ minWarn: true }); return; }
         openItems();
@@ -1107,6 +1154,32 @@ class Component extends DCLogic {
       // Delivery asks no layout or venue, so those only count when onsite.
       setupDone: sReady && !typeOpen &&
                  !(isOnsite && layoutOpen) && !(isOnsite && venueOpen),
+      isCounters: screen === 'counters',
+      counterGroups: this.COUNTERS.map((g) => ({
+        group: g.group,
+        items: g.items.map((c) => {
+          const on = !!(st.counters || {})[c.id];
+          return {
+            name: c.name, on: on,
+            iFlame: c.icon === 'flame', iPan: c.icon === 'pan', iBowl2: c.icon === 'bowl',
+            iDump2: c.icon === 'dump', iRoll2: c.icon === 'roll', iBread2: c.icon === 'bread',
+            iSlice: c.icon === 'slice', iGlass: c.icon === 'glass', iSkew2: c.icon === 'skew',
+            border: on ? '#C9963B' : '#E4D9C2',
+            bg: on ? '#FDF7EA' : '#FFFFFF',
+            shadow: on ? '0 4px 12px rgba(201,150,59,0.3)' : '0 1px 2px rgba(14,59,51,0.06)',
+            pick: () => {
+              const n = Object.assign({}, this.state.counters);
+              if (n[c.id]) delete n[c.id]; else n[c.id] = true;
+              this.setState({ counters: n });
+            }
+          };
+        })
+      })),
+      countersPicked: nCounters,
+      countersCount: nCounters === 0 ? 'None chosen yet'
+        : nCounters + (nCounters === 1 ? ' counter chosen' : ' counters chosen'),
+      cReady: nCounters > 0,
+      cNotReady: nCounters === 0,
       typeOpen: typeOpen,
       typeDone: !typeOpen && !!st.type,
       typeLine: this.typeLabelOf(st.type),

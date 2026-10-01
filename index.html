@@ -523,6 +523,7 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
       '<div class="sec"><h3>Setup</h3><div class="body">' +
         kv('Service', S.typeLabel) +
         (S.isOnsite ? kv('Style', S.layoutLabel) + kv('Venue', S.venueLabel) : '') +
+        (S.hasCounters ? kv('Live counters', S.countersText) : '') +
       '</div></div>' +
       '<div class="sec"><h3>Menu</h3><div class="body">' +
         kv('Package', S.pkgLabel) + kv('Cuisine', S.cuisine) + kv('Per person', S.ppText) +
