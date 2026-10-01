@@ -117,30 +117,30 @@ class Component extends DCLogic {
        list reads at a glance rather than as sixteen rows, and ordered with
        the ones most often asked for at the top of each group. */
     this.COUNTERS = [
-      { group: 'Grill & BBQ', items: [
+      { group: 'Grill & BBQ', bg: '#F6E1CE', items: [
         { id: 'bbq', name: 'BBQ Counter', icon: 'flame' },
         { id: 'shawarma', name: 'Shawarma Counter', icon: 'skew' },
         { id: 'tandoor', name: 'Tandoor Counter', icon: 'flame' },
         { id: 'tawa', name: 'Tawa Counter', icon: 'pan' },
         { id: 'sizzler', name: 'Sizzler Counter', icon: 'pan' }
       ] },
-      { group: 'Indian street food', items: [
+      { group: 'Indian street food', bg: '#F8EBCB', items: [
         { id: 'chaat', name: 'Chaat Counter', icon: 'bowl' },
         { id: 'chole', name: 'Amritsari Chole Kulche', icon: 'bread' },
         { id: 'makki', name: 'Makki di Roti - Sarson da Saag', icon: 'bread' }
       ] },
-      { group: 'Asian', items: [
+      { group: 'Asian', bg: '#E2EDE1', items: [
         { id: 'dimsum', name: 'Dimsum Counter', icon: 'dump' },
         { id: 'bao', name: 'Bao Counter', icon: 'dump' },
         { id: 'sushi', name: 'Sushi Counter', icon: 'roll' },
         { id: 'wok', name: 'Oriental Wok Station', icon: 'pan' },
         { id: 'khowsuey', name: 'Khow Suey', icon: 'bowl' }
       ] },
-      { group: 'Italian', items: [
+      { group: 'Italian', bg: '#F5E4DE', items: [
         { id: 'pasta', name: 'Pasta Counter', icon: 'bowl' },
         { id: 'pizza', name: 'Pizza Counter', icon: 'slice' }
       ] },
-      { group: 'Drinks', items: [
+      { group: 'Drinks', bg: '#E1EDF3', items: [
         { id: 'mocktail', name: 'Mocktail Bar', icon: 'glass' }
       ] }
     ];
@@ -974,6 +974,91 @@ class Component extends DCLogic {
     const col = (this.PRICES[this.state.cuisine] || {})[setup || this.setupKey()];
     return !!(col && col.length && col.some((v) => +v > 0));
   }
+  /* A little illustration for every counter, in the same flat style as the
+     setup cards. They are drawn here rather than in the template because
+     sixteen scenes written out per card would be a very large page; built as
+     a data URI, each one is just a background image on a tile. */
+  counterArt(id, bg) {
+    const top = '<rect y="72" width="160" height="28" fill="#0E3B33"/>' +
+                '<rect y="68" width="160" height="5" fill="#C9963B"/>';
+    const steam = (a, b, c) => '<path d="M' + a + ' 34q-3-7 0-12M' + b + ' 31q-3-7 0-12M' +
+                               c + ' 34q-3-7 0-12" stroke="#C9B98F" stroke-width="2.2" fill="none" stroke-linecap="round"/>';
+    const BODY = {
+      bbq: '<rect x="46" y="40" width="68" height="28" rx="5" fill="#1B2B27"/>' +
+           '<path d="M50 47h60M50 54h60M50 61h60" stroke="#6E7673" stroke-width="2.2" stroke-linecap="round"/>' +
+           '<path d="M72 38q-5-9 2-16q1 7 5 9q1-6 5-8q0 8 4 11q-2 7-9 7z" fill="#E0752B"/>' +
+           '<path d="M78 38q-3-5 1-9q1 4 3 5q0-3 2-4q0 5 2 6q-1 4-5 4z" fill="#F4C25B"/>',
+      shawarma: '<rect x="77" y="14" width="5" height="54" fill="#8A928D"/>' +
+                '<path d="M79.5 22q16 3 16 22t-16 24q-16-5-16-24t16-22z" fill="#B5652B"/>' +
+                '<path d="M79.5 30q10 2 10 15t-10 17q-10-4-10-17t10-15z" fill="#D9A441"/>' +
+                '<path d="M104 44h16l-4 10h-12z" fill="#FBF6EA" stroke="#C9B98F" stroke-width="1.5"/>',
+      tandoor: '<path d="M56 68V46a24 15 0 0 1 48 0v22z" fill="#B5652B"/>' +
+               '<ellipse cx="80" cy="46" rx="24" ry="9" fill="#7A3F1C"/>' +
+               '<path d="M80 62q-8-7-3-15q1 5 5 6q1-5 4-6q0 6 4 8q0 6-10 7z" fill="#E0752B"/>' +
+               '<path d="M118 50a13 10 0 0 1 26 0z" fill="#E9C77E" stroke="#C9963B" stroke-width="1.5"/>',
+      tawa: '<ellipse cx="80" cy="60" rx="36" ry="9" fill="#3A3A3A"/>' +
+            '<path d="M46 60a34 14 0 0 1 68 0z" fill="#5A5A5A"/>' +
+            '<path d="M60 56a20 9 0 0 1 40 0z" fill="#D9A441"/>' + steam(66, 80, 94),
+      sizzler: '<ellipse cx="80" cy="60" rx="38" ry="12" fill="#7A5A34"/>' +
+               '<ellipse cx="80" cy="56" rx="30" ry="10" fill="#2B2B2B"/>' +
+               '<ellipse cx="74" cy="54" rx="8" ry="4" fill="#B5652B"/>' +
+               '<ellipse cx="90" cy="56" rx="7" ry="3.5" fill="#6E9B4A"/>' + steam(64, 80, 96),
+      chaat: '<path d="M48 48h64a32 21 0 0 1-64 0z" fill="#FBF6EA" stroke="#C9B98F" stroke-width="2"/>' +
+             '<path d="M56 44q24-13 48 0" stroke="#E0752B" stroke-width="3" fill="none" stroke-linecap="round"/>' +
+             '<circle cx="66" cy="43" r="3.4" fill="#6E9B4A"/><circle cx="80" cy="40" r="3.4" fill="#B3261E"/>' +
+             '<circle cx="94" cy="43" r="3.4" fill="#D9A441"/>' +
+             '<path d="M112 40l10 22" stroke="#C9963B" stroke-width="3" stroke-linecap="round"/>',
+      chole: '<path d="M38 46h44a22 17 0 0 1-44 0z" fill="#8A4A22"/>' +
+             '<ellipse cx="60" cy="46" rx="22" ry="4.5" fill="#B5652B"/>' +
+             '<circle cx="54" cy="44" r="2.6" fill="#D9A441"/><circle cx="64" cy="43" r="2.6" fill="#D9A441"/>' +
+             '<circle cx="112" cy="50" r="19" fill="#E9C77E" stroke="#C9963B" stroke-width="2.5"/>' +
+             '<circle cx="106" cy="45" r="1.8" fill="#B5652B"/><circle cx="117" cy="53" r="1.8" fill="#B5652B"/>' +
+             '<circle cx="110" cy="56" r="1.8" fill="#B5652B"/>',
+      makki: '<path d="M38 48h44a22 17 0 0 1-44 0z" fill="#2F6B3C"/>' +
+             '<ellipse cx="60" cy="48" rx="22" ry="4.5" fill="#4E8B5A"/>' +
+             '<path d="M50 44q6-6 12 0" stroke="#7FB069" stroke-width="2.5" fill="none"/>' +
+             '<circle cx="112" cy="50" r="19" fill="#F0C14B" stroke="#C9963B" stroke-width="2.5"/>' +
+             '<path d="M103 46q9-5 18 0M103 54q9-5 18 0" stroke="#C9963B" stroke-width="1.6" fill="none"/>',
+      dimsum: '<ellipse cx="80" cy="44" rx="34" ry="9" fill="#E3B964"/>' +
+              '<rect x="46" y="44" width="68" height="11" fill="#C9963B"/>' +
+              '<rect x="46" y="55" width="68" height="11" fill="#B0802C"/>' +
+              '<path d="M46 50h68M46 61h68" stroke="#8A6420" stroke-width="1.2"/>' + steam(66, 80, 94),
+      bao: '<path d="M48 64a32 24 0 0 1 64 0z" fill="#FBF6EA" stroke="#C9B98F" stroke-width="2"/>' +
+           '<path d="M56 56q24-16 48 0" stroke="#B5652B" stroke-width="6" fill="none" stroke-linecap="round"/>' +
+           '<circle cx="68" cy="50" r="2.6" fill="#6E9B4A"/><circle cx="92" cy="50" r="2.6" fill="#D9A441"/>',
+      sushi: '<rect x="36" y="46" width="34" height="20" rx="9" fill="#FBF6EA" stroke="#C9B98F" stroke-width="2"/>' +
+             '<path d="M36 50q17-12 34 0z" fill="#E0752B"/>' +
+             '<circle cx="104" cy="54" r="17" fill="#FBF6EA" stroke="#1B2B27" stroke-width="3.5"/>' +
+             '<circle cx="104" cy="54" r="6.5" fill="#E0752B"/>' +
+             '<circle cx="104" cy="54" r="2.4" fill="#6E9B4A"/>',
+      wok: '<path d="M42 42h60a30 22 0 0 1-60 0z" fill="#2B2B2B"/>' +
+           '<path d="M102 44l18-7" stroke="#2B2B2B" stroke-width="6" stroke-linecap="round"/>' +
+           '<path d="M66 40q-5-9 2-16q1 7 5 9q1-6 5-8q0 8 4 11q-2 7-9 7z" fill="#E0752B"/>' +
+           '<path d="M50 38l24-14M54 42l24-14" stroke="#C9963B" stroke-width="2.4" stroke-linecap="round"/>',
+      khowsuey: '<path d="M46 46h68a34 21 0 0 1-68 0z" fill="#FBF6EA" stroke="#C9B98F" stroke-width="2"/>' +
+                '<path d="M54 45q9-9 18 0t18 0 18 0" stroke="#E3B964" stroke-width="3.4" fill="none" stroke-linecap="round"/>' +
+                '<circle cx="68" cy="39" r="3" fill="#6E9B4A"/><circle cx="92" cy="40" r="3" fill="#E0752B"/>' +
+                '<path d="M104 36l12-10" stroke="#C9963B" stroke-width="2.4" stroke-linecap="round"/>',
+      pasta: '<path d="M44 48h72a36 21 0 0 1-72 0z" fill="#FBF6EA" stroke="#C9B98F" stroke-width="2"/>' +
+             '<path d="M54 46q12-14 26-7t26 7" stroke="#E9C77E" stroke-width="4.5" fill="none" stroke-linecap="round"/>' +
+             '<path d="M58 44q12-10 22-5t22 5" stroke="#D9A441" stroke-width="2.6" fill="none"/>' +
+             '<circle cx="80" cy="38" r="4.6" fill="#B3261E"/><circle cx="68" cy="42" r="3" fill="#6E9B4A"/>',
+      pizza: '<circle cx="80" cy="46" r="28" fill="#E9C77E" stroke="#C9963B" stroke-width="3"/>' +
+             '<circle cx="80" cy="46" r="21" fill="#E07B52"/>' +
+             '<circle cx="71" cy="39" r="4" fill="#B3261E"/><circle cx="90" cy="44" r="4" fill="#B3261E"/>' +
+             '<circle cx="77" cy="55" r="4" fill="#B3261E"/>' +
+             '<path d="M80 18v56" stroke="#C9963B" stroke-width="1.6" opacity="0.6"/>',
+      mocktail: '<path d="M62 24h36l-5 44h-26z" fill="#DCEBF2" stroke="#0E3B33" stroke-width="2.2"/>' +
+                '<path d="M65 38h30l-4 28h-22z" fill="#E0752B" opacity="0.85"/>' +
+                '<path d="M94 24l10-12" stroke="#C9963B" stroke-width="3.4" stroke-linecap="round"/>' +
+                '<circle cx="72" cy="46" r="2.4" fill="#FBF6EA"/><circle cx="84" cy="54" r="1.8" fill="#FBF6EA"/>' +
+                '<circle cx="78" cy="60" r="1.6" fill="#FBF6EA"/>' +
+                '<path d="M98 30a9 9 0 0 1 0 14z" fill="#6E9B4A"/>'
+    };
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 100">' +
+      '<rect width="160" height="100" fill="' + bg + '"/>' + top + (BODY[id] || '') + '</svg>';
+    return 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '")';
+  }
   // a live station means there are counters to choose
   hasCounters() {
     const l = this.state.layout;
@@ -1161,12 +1246,11 @@ class Component extends DCLogic {
           const on = !!(st.counters || {})[c.id];
           return {
             name: c.name, on: on,
-            iFlame: c.icon === 'flame', iPan: c.icon === 'pan', iBowl2: c.icon === 'bowl',
-            iDump2: c.icon === 'dump', iRoll2: c.icon === 'roll', iBread2: c.icon === 'bread',
-            iSlice: c.icon === 'slice', iGlass: c.icon === 'glass', iSkew2: c.icon === 'skew',
+            art: this.counterArt(c.id, g.bg),
             border: on ? '#C9963B' : '#E4D9C2',
             bg: on ? '#FDF7EA' : '#FFFFFF',
-            shadow: on ? '0 4px 12px rgba(201,150,59,0.3)' : '0 1px 2px rgba(14,59,51,0.06)',
+            nameColor: on ? '#6A4E12' : '#0E3B33',
+            shadow: on ? '0 6px 16px rgba(201,150,59,0.35)' : '0 1px 2px rgba(14,59,51,0.06)',
             pick: () => {
               const n = Object.assign({}, this.state.counters);
               if (n[c.id]) delete n[c.id]; else n[c.id] = true;
