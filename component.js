@@ -1,7 +1,7 @@
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { screen: null, name: '', cc: '+971', phone: '', emirate: '', date: '', time: '', pax: 18, paxEdit: null, pureVeg: false, minWarn: false, custMinOk: false, detailsWarn: false, type: null, layout: null, venue: null, cuisine: 'ic', pkg: null, theme: null, themeView: null, eventNote: '', returnTo: null, pdfMsg: '', zoom: null, notes: {}, noteFor: null, noteDraft: '', consent: false, tab: 'starters', fcu: 'all', sub: 0, note: '', sel: {}, selKey: '' };
+    this.state = { screen: null, name: '', cc: '+971', phone: '', emirate: '', date: '', time: '', pax: 18, paxEdit: null, pureVeg: false, minWarn: false, custMinOk: false, detailsWarn: false, type: null, layout: null, venue: null, cuisine: 'ic', pkg: null, theme: null, themeView: null, eventNote: '', returnTo: null, pdfMsg: '', zoom: null, notes: {}, noteFor: null, noteDraft: '', consent: false, setupEdit: null, tab: 'starters', fcu: 'all', sub: 0, note: '', sel: {}, selKey: '' };
     // Dummy photo tiles for now; real photos replace the glyph tile later.
     this.ITEMS = [];
     const add = (cu, cat, diet, sub, list) => list.forEach((n) => {
@@ -52,9 +52,9 @@ class Component extends DCLogic {
     });
     // Per-person prices, from the menu sheet: [package 1..4]
     this.PRICES = {
-      ic: { buffet: [130, 145, 170, 199], delivery: [49, 69, 99, 110], live: [110, 130, 150, 175] },
-      in: { buffet: [130, 145, 170, 199], delivery: [59, 79, 99, 119], live: [139, 159, 169, 189] },
-      ch: { buffet: [99, 135, 155, 190], delivery: [59, 79, 99, 119], live: [139, 159, 169, 189] }
+      ic: { buffet: [130, 145, 170, 199], delivery: [49, 69, 99, 110], live: [110, 130, 150, 175], both: [0, 0, 0, 0] },
+      in: { buffet: [130, 145, 170, 199], delivery: [59, 79, 99, 119], live: [139, 159, 169, 189], both: [0, 0, 0, 0] },
+      ch: { buffet: [99, 135, 155, 190], delivery: [59, 79, 99, 119], live: [139, 159, 169, 189], both: [0, 0, 0, 0] }
     };
     // What the customer is shown as saved on a buffet package. The struck-out
     // price is worked out as price + saving, never stored on its own, so it
@@ -125,8 +125,8 @@ class Component extends DCLogic {
   // Fitted from the 4 package prices: weighted dishes per package vs price (least squares), then +10%.
   catRates() {
     const st = this.state;
-    const setup = st.type === 'delivery' ? 'delivery' : (st.layout === 'live' ? 'live' : 'buffet');
-    const P = this.PRICES[st.cuisine][setup];
+    const setup = this.setupKey();
+    const P = (this.PRICES[st.cuisine] || {})[setup] || [0, 0, 0, 0];
     const w = this.CAT_W, X = this.COMP.map((c) => c[0] * w[0] + c[1] * w[1] + c[2] * w[2] + c[3] * w[3]);
     const mx = X.reduce((a, b) => a + b, 0) / 4, my = P.reduce((a, b) => a + b, 0) / 4;
     let sxy = 0, sxx = 0;
@@ -143,15 +143,15 @@ class Component extends DCLogic {
   // and the older per-tier Q is used instead.
   comp(tierIdx) {
     const st = this.state;
-    const setup = st.type === 'delivery' ? 'delivery' : (st.layout === 'live' ? 'live' : 'buffet');
-    if (setup !== 'buffet') return null;
+    const setup = this.setupKey();
+    if (setup !== 'buffet' && setup !== 'both') return null;
     const byCu = (this.QB || {})[st.cuisine];
     return (byCu && byCu[tierIdx]) || null;
   }
   pkgVals() {
     const MIN = 2000;
     const st = this.state;
-    const setup = st.type === 'delivery' ? 'delivery' : (st.layout === 'live' ? 'live' : 'buffet');
+    const setup = this.setupKey();
     const popular = (this.props.popular ?? 2) - 1;
     const pax = st.pax;
     const pv = st.pureVeg;
@@ -169,7 +169,7 @@ class Component extends DCLogic {
       { id: 'in', label: 'Indian', grow: 1 },
       { id: 'ch', label: 'Chinese', grow: 1 }
     ];
-    const prices = PRICES[st.cuisine][setup];
+    const prices = (PRICES[st.cuisine] || {})[setup] || [0, 0, 0, 0];
     const sel = (on) => ({
       border: on ? '#C9963B' : '#E4D9C2',
       shadow: on ? '0 6px 16px rgba(201,150,59,0.35)' : '0 1px 2px rgba(14,59,51,0.06)'
@@ -200,10 +200,13 @@ class Component extends DCLogic {
           { k: 'Dessert', v: t.ds }
         ];
       }
+      const shown = this.priced(setup);
       return Object.assign({
         name: 'Package ' + (i + 1),
-        price: prices[i],
-        onOffer: save > 0,
+        price: shown ? prices[i] : 'On request',
+        priceUnit: shown ? 'Dh / person' : 'our team will quote',
+        priceFont: shown ? '34px' : '19px',
+        onOffer: shown && save > 0,
         wasPrice: save > 0 ? fmt(prices[i] + save) : '',
         saveText: save > 0 ? 'SAVE ' + save + ' Dh' : '',
         popular: i === popular,
@@ -215,15 +218,17 @@ class Component extends DCLogic {
 
     const isCustom = st.pkg === 'custom';
     const hasPkg = typeof st.pkg === 'number';
+    const priced = this.priced(setup);
     const price = hasPkg ? prices[st.pkg] : 0;
     const raw = price * pax;
-    const belowMin = hasPkg && raw < MIN;
+    const belowMin = priced && hasPkg && raw < MIN;
     const applied = belowMin && st.consent;
     let totalText = '—', totalSub = 'Pick a package to see the price', totalColor = '#0E3B33';
     if (isCustom) { totalText = 'Custom menu'; totalSub = 'Base ' + this.catRates().base + ' Dh + price of each dish you pick'; }
     if (hasPkg) {
-      totalText = fmt(applied ? MIN : raw) + ' Dh';
-      totalSub = applied ? 'Minimum applied (was ' + fmt(raw) + ' Dh)' : pax + ' guests × ' + price + ' Dh';
+      totalText = priced ? fmt(applied ? MIN : raw) + ' Dh' : 'On request';
+      totalSub = !priced ? 'Our team will confirm the price for this setup'
+               : (applied ? 'Minimum applied (was ' + fmt(raw) + ' Dh)' : pax + ' guests × ' + price + ' Dh');
       if (belowMin && !st.consent) totalColor = st.minWarn ? '#B3261E' : '#8A3B12';
     }
     const ready = isCustom || hasPkg;
@@ -599,8 +604,8 @@ class Component extends DCLogic {
     const st = this.state;
     const MIN = 2000;
     const fmt = (n) => n.toLocaleString('en-US');
-    const setup = st.type === 'delivery' ? 'delivery' : (st.layout === 'live' ? 'live' : 'buffet');
-    const P = this.PRICES[st.cuisine][setup];
+    const setup = this.setupKey();
+    const P = (this.PRICES[st.cuisine] || {})[setup] || [0, 0, 0, 0];
     const cuisine = { ic: 'Indian & Chinese', in: 'Indian', ch: 'Chinese' }[st.cuisine];
     const isCustom = st.pkg === 'custom', hasPkg = typeof st.pkg === 'number';
     const g = { starters: [], mains: [], staples: [], dessert: [] };
@@ -631,22 +636,22 @@ class Component extends DCLogic {
       emirate: st.emirate || 'Not selected',
       when: when, pax: String(st.pax), veg: st.pureVeg ? 'Yes' : 'No',
       typeLabel: st.type === 'delivery' ? 'Delivery' : (st.type === 'onsite' ? 'Onsite Catering' : 'Not selected'),
-      layoutLabel: st.layout === 'live' ? 'Live Cooking Station' : (st.layout === 'buffet' ? 'Buffet' : 'Not selected'),
+      layoutLabel: this.layoutLabelOf(st.layout) || 'Not selected',
       venueLabel: st.venue === 'indoor' ? 'Indoor' : (st.venue === 'outdoor' ? 'Outdoor' : 'Not selected'),
       isOnsite: st.type === 'onsite',
       pkgLabel: isCustom ? 'Custom menu' : (hasPkg ? 'Package ' + (st.pkg + 1) : 'Not selected'),
       cuisine: cuisine + (st.pureVeg ? ' (Pure Veg)' : ''),
-      ppText: pp > 0 ? pp + ' Dh' : '-',
+      ppText: pp > 0 ? pp + ' Dh' : (this.priced() ? '-' : 'On request'),
       groups: groups,
       themeLabel: th ? th.name + (th.price ? ' (+ ' + fmt(th.price) + ' Dh)' : ' (Free)') : 'No theme',
       notesText: (st.eventNote || '').trim() || 'None',
       menuRowLabel: pp > 0 ? 'Menu: ' + st.pax + ' guests x ' + pp + ' Dh' : 'Menu',
-      menuRowValue: pp > 0 ? fmt(raw) + ' Dh' : '-',
+      menuRowValue: pp > 0 ? fmt(raw) + ' Dh' : (this.priced() ? '-' : 'On request'),
       showMin: pp > 0 && raw < MIN,
       minValue: '+ ' + fmt(Math.max(MIN - raw, 0)) + ' Dh',
       themeRowLabel: th ? 'Theme: ' + th.name : 'Theme',
       themeRowValue: th ? (th.price ? '+ ' + fmt(th.price) + ' Dh' : 'Free') : 'None',
-      grand: fmt(grand) + ' Dh', grandNum: grand, menuTotal: menuTotal, themePrice: themePrice, th: th
+      grand: (grand > 0 || this.priced()) ? fmt(grand) + ' Dh' : 'On request', grandNum: grand, menuTotal: menuTotal, themePrice: themePrice, th: th
     };
   }
   /* One page, on the printed border. `bg` is optional:
@@ -839,7 +844,19 @@ class Component extends DCLogic {
       this.ITEMS.forEach((x, i) => { x.id = 'i' + i; });
     }
     if (config) {
-      if (config.PRICES) this.PRICES = config.PRICES;
+      if (config.PRICES) {
+        // The saved config can be older than this page and not carry every
+        // setup. Merging keeps a column the config has never heard of, which
+        // would otherwise go missing the moment a customer chose it.
+        const merged = {};
+        Object.keys(this.PRICES).forEach((cu) => {
+          merged[cu] = Object.assign({}, this.PRICES[cu], config.PRICES[cu] || {});
+        });
+        Object.keys(config.PRICES).forEach((cu) => {
+          if (!merged[cu]) merged[cu] = config.PRICES[cu];
+        });
+        this.PRICES = merged;
+      }
       if (config.Q) this.Q = config.Q;
       if (Array.isArray(config.THEMES) && config.THEMES.length) this.THEMES = config.THEMES;
       if (Array.isArray(config.CAT_W)) this.CAT_W = config.CAT_W;
@@ -911,11 +928,37 @@ class Component extends DCLogic {
     if (!el) return;
     el.scrollIntoView({ block: 'nearest', behavior: calm ? 'auto' : 'smooth' });
   }
+  // which column of PRICES this setup is quoted from
+  setupKey() {
+    const st = this.state;
+    if (st.type === 'delivery') return 'delivery';
+    if (st.layout === 'live') return 'live';
+    if (st.layout === 'both') return 'both';
+    return 'buffet';
+  }
+  // a price column with nothing in it yet means "we will quote you"
+  priced(setup) {
+    const col = (this.PRICES[this.state.cuisine] || {})[setup || this.setupKey()];
+    return !!(col && col.length && col.some((v) => +v > 0));
+  }
+  typeLabelOf(t) {
+    return t === 'delivery' ? 'Delivery' : (t === 'onsite' ? 'Onsite Catering' : '');
+  }
+  layoutLabelOf(l) {
+    return l === 'live' ? 'Live Cooking Station'
+         : (l === 'both' ? 'Buffet + Live Station'
+         : (l === 'buffet' ? 'Buffet' : ''));
+  }
   renderVals() {
     const st = this.state;
     const screen = st.screen || this.props.start || 'details';
     const isOnsite = st.type === 'onsite';
     const sReady = st.type === 'delivery' || (isOnsite && !!st.layout && !!st.venue);
+    // a question is open while it has no answer, or while the pencil is on it
+    const edit = st.setupEdit || null;
+    const typeOpen = !st.type || edit === 'type';
+    const layoutOpen = !typeOpen && (!st.layout || edit === 'layout');
+    const venueOpen = !typeOpen && !layoutOpen && (!st.venue || edit === 'venue');
     const opt = (on, pick) => ({
       on: on, pick: pick,
       border: on ? '#C9963B' : '#E4D9C2',
@@ -1012,7 +1055,7 @@ class Component extends DCLogic {
       eventNote: st.eventNote,
       setEventNote: (e) => this.setState({ eventNote: String(e.target.value).slice(0, 500) }),
       themeSumText: S.th ? S.th.name + (S.th.price ? ' · + ' + S.fmt(S.th.price) + ' Dh' : ' · Free') : 'None selected',
-      grandText: S.grandNum > 0 ? S.grand : '-',
+      grandText: (S.grandNum > 0 || !this.priced()) ? S.grand : '-',
       rv: S,
       hasPdfMsg: !!st.pdfMsg,
       pdfMsg: st.pdfMsg,
@@ -1057,12 +1100,29 @@ class Component extends DCLogic {
       showVenue: isOnsite && !!st.layout,
       sReady: sReady,
       sNotReady: !sReady,
-      delivery: opt(st.type === 'delivery', () => this.setState({ type: 'delivery', layout: null, venue: null, consent: false })),
-      onsite: opt(isOnsite, () => { this._scrollTo = 'layout'; this.setState({ type: 'onsite', consent: false }); }),
-      buffet: opt(st.layout === 'buffet', () => { this._scrollTo = 'venue'; this.setState({ layout: 'buffet', consent: false }); }),
-      live: opt(st.layout === 'live', () => { this._scrollTo = 'venue'; this.setState({ layout: 'live', consent: false }); }),
-      indoor: opt(st.venue === 'indoor', () => this.setState({ venue: 'indoor' })),
-      outdoor: opt(st.venue === 'outdoor', () => this.setState({ venue: 'outdoor' }))
+      // Each question folds into one line once it is answered, so only the
+      // question still being asked takes up the screen. The pencil opens it
+      // again without losing the answer.
+      typeOpen: typeOpen,
+      typeDone: !typeOpen && !!st.type,
+      typeLine: this.typeLabelOf(st.type),
+      editType: () => this.setState({ setupEdit: 'type' }),
+      layoutOpen: isOnsite && layoutOpen,
+      layoutDone: isOnsite && !layoutOpen && !!st.layout,
+      layoutLine: this.layoutLabelOf(st.layout),
+      editLayout: () => this.setState({ setupEdit: 'layout' }),
+      venueOpen: isOnsite && !!st.layout && venueOpen,
+      venueDone: isOnsite && !!st.layout && !venueOpen && !!st.venue,
+      venueLine: st.venue === 'indoor' ? 'Indoor' : (st.venue === 'outdoor' ? 'Outdoor' : ''),
+      editVenue: () => this.setState({ setupEdit: 'venue' }),
+
+      delivery: opt(st.type === 'delivery', () => this.setState({ type: 'delivery', layout: null, venue: null, consent: false, setupEdit: null })),
+      onsite: opt(isOnsite, () => { this._scrollTo = 'layout'; this.setState({ type: 'onsite', consent: false, setupEdit: null }); }),
+      buffet: opt(st.layout === 'buffet', () => { this._scrollTo = 'venue'; this.setState({ layout: 'buffet', consent: false, setupEdit: null }); }),
+      live: opt(st.layout === 'live', () => { this._scrollTo = 'venue'; this.setState({ layout: 'live', consent: false, setupEdit: null }); }),
+      both: opt(st.layout === 'both', () => { this._scrollTo = 'venue'; this.setState({ layout: 'both', consent: false, setupEdit: null }); }),
+      indoor: opt(st.venue === 'indoor', () => this.setState({ venue: 'indoor', setupEdit: null })),
+      outdoor: opt(st.venue === 'outdoor', () => this.setState({ venue: 'outdoor', setupEdit: null }))
     }, this.pkgVals(), this.itemsVals());
   }
 }
