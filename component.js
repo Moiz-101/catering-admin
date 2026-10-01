@@ -52,9 +52,15 @@ class Component extends DCLogic {
     });
     // Per-person prices, from the menu sheet: [package 1..4]
     this.PRICES = {
-      ic: { buffet: [109, 129, 149, 159], delivery: [49, 69, 99, 110], live: [110, 130, 150, 175] },
-      in: { buffet: [119, 139, 159, 179], delivery: [59, 79, 99, 119], live: [139, 159, 169, 189] },
-      ch: { buffet: [99, 119, 139, 149], delivery: [59, 79, 99, 119], live: [139, 159, 169, 189] }
+      ic: { buffet: [130, 145, 170, 199], delivery: [49, 69, 99, 110], live: [110, 130, 150, 175] },
+      in: { buffet: [130, 145, 170, 199], delivery: [59, 79, 99, 119], live: [139, 159, 169, 189] },
+      ch: { buffet: [99, 135, 155, 190], delivery: [59, 79, 99, 119], live: [139, 159, 169, 189] }
+    };
+    // What the customer is shown as saved on a buffet package. The struck-out
+    // price is worked out as price + saving, never stored on its own, so it
+    // cannot drift below the real price when a price is edited later.
+    this.SAVE = {
+      buffet: { ic: [19, 14, 15, 16], in: [19, 14, 15, 16], ch: [16, 14, 14, 15] }
     };
     // Total dishes in each package (starters + mains + staples + dessert), used to price custom menus
     this.COMP = [[3, 2, 2, 1], [4, 4, 2, 2], [5, 5, 4, 2], [6, 6, 4, 2]]; // starters, mains, staples, dessert per package
@@ -133,11 +139,16 @@ class Component extends DCLogic {
       shadow: on ? '0 6px 16px rgba(201,150,59,0.35)' : '0 1px 2px rgba(14,59,51,0.06)'
     });
 
+    const saves = ((this.SAVE || {})[setup] || {})[st.cuisine] || [];
     const pkgs = TIERS.map((t, i) => {
       const on = st.pkg === i;
+      const save = Math.max(0, parseInt(saves[i], 10) || 0);
       return Object.assign({
         name: 'Package ' + (i + 1),
         price: prices[i],
+        onOffer: save > 0,
+        wasPrice: save > 0 ? fmt(prices[i] + save) : '',
+        saveText: save > 0 ? 'SAVE ' + save + ' Dh' : '',
         popular: i === popular,
         on: on,
         pick: () => this.setState({ pkg: st.pkg === i ? null : i, consent: false, minWarn: false }),
@@ -765,6 +776,7 @@ class Component extends DCLogic {
       if (Array.isArray(config.CAT_W)) this.CAT_W = config.CAT_W;
       if (Array.isArray(config.COMP)) this.COMP = config.COMP;
       if (typeof config.CUSTOM_MARKUP === 'number') this.CUSTOM_MARKUP = config.CUSTOM_MARKUP;
+      if (config.SAVE) this.SAVE = config.SAVE;
     }
     // dish ids are positions, so anything picked before the swap no longer means the same thing
     this.setState({ sel: {}, notes: {} });

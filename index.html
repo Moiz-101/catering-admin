@@ -963,6 +963,16 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
             return '<input class="search" style="height:38px;text-align:center;padding:0 4px" ' +
                    'data-price="' + c[0] + '|' + st[0] + '|' + i + '" value="' + v + '" inputmode="numeric">';
           }).join('') + '</div>';
+        // the offer only runs on buffet, so only buffet gets a savings row
+        if (st[0] === 'buffet') {
+          var sv = (((menuCfg.SAVE || {}).buffet || {})[c[0]]) || [0, 0, 0, 0];
+          html += '<div class="mrow"><div class="nm" style="flex:0 0 74px;color:#12604B">Save</div>' +
+            arr.map(function (v, i) {
+              return '<input class="search" style="height:34px;text-align:center;padding:0 4px;' +
+                     'border-color:#B7D6C8;color:#12604B" data-save="' + c[0] + '|' + i + '" value="' +
+                     (parseInt(sv[i], 10) || 0) + '" inputmode="numeric">';
+            }).join('') + '</div>';
+        }
       });
     });
 
@@ -971,6 +981,9 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
         return '<div class="mrow"><div class="nm">' + esc(t.name) + '</div>' +
           '<input class="search" style="height:38px;width:92px;text-align:center" data-theme="' + i + '" value="' + (t.price || 0) + '" inputmode="numeric"></div>';
       }).join('') +
+      '<div class="note">The green <b>Save</b> row is what buffet customers are told they are saving. ' +
+      'The crossed-out price is the price plus the saving, so it follows the price on its own. ' +
+      'Set every box to 0 to end the offer.</div>' +
       '<label class="field">Custom-menu mark-up<input id="cMarkup" value="' + menuCfg.CUSTOM_MARKUP + '" inputmode="decimal"></label>' +
       '<div class="note">1.1 means a build-your-own menu costs 10% more than the equivalent package.</div>' +
       '<button class="save" id="pSave">Save prices</button><div id="pMsg"></div>';
@@ -984,6 +997,15 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
         var k = inp.dataset.price.split('|');
         var v = parseInt(inp.value, 10);
         if (!isNaN(v) && v >= 0) cfg.PRICES[k[0]][k[1]][+k[2]] = v;
+      });
+      [].forEach.call(main.querySelectorAll('[data-save]'), function (inp) {
+        var k = inp.dataset.save.split('|');
+        var v = parseInt(inp.value, 10);
+        if (isNaN(v) || v < 0) return;
+        cfg.SAVE = cfg.SAVE || {};
+        cfg.SAVE.buffet = cfg.SAVE.buffet || {};
+        cfg.SAVE.buffet[k[0]] = cfg.SAVE.buffet[k[0]] || [0, 0, 0, 0];
+        cfg.SAVE.buffet[k[0]][+k[1]] = v;
       });
       [].forEach.call(main.querySelectorAll('[data-theme]'), function (inp) {
         var v = parseInt(inp.value, 10);
