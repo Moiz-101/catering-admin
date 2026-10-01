@@ -1103,6 +1103,10 @@ class Component extends DCLogic {
       // Each question folds into one line once it is answered, so only the
       // question still being asked takes up the screen. The pencil opens it
       // again without losing the answer.
+      // every question answered and folded away: nothing left but to go on.
+      // Delivery asks no layout or venue, so those only count when onsite.
+      setupDone: sReady && !typeOpen &&
+                 !(isOnsite && layoutOpen) && !(isOnsite && venueOpen),
       typeOpen: typeOpen,
       typeDone: !typeOpen && !!st.type,
       typeLine: this.typeLabelOf(st.type),
