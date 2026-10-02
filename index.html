@@ -1923,9 +1923,113 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
               : '. Customers see them now.');
   }
 
+
+  /* ---------------- live counter photos ----------------
+
+     Same idea as the dish photos: shrunk here, sent to the same bucket, and
+     the address kept in menu_config so the customer's page picks it up on its
+     next load. A counter without a photo falls back to the drawing built into
+     the page, so this can be filled in a few at a time.
+     ------------------------------------------------------------------ */
+
+  // the counter list lives in the customer's component, so there is one of it
+  function counterList() {
+    try { return (new Component({})).COUNTERS || []; } catch (e) { return []; }
+  }
+
+  async function saveCounterImg(id, url) {
+    var cfg = JSON.parse(JSON.stringify(menuCfg || {}));
+    cfg.COUNTER_IMG = cfg.COUNTER_IMG || {};
+    if (url) cfg.COUNTER_IMG[id] = url; else delete cfg.COUNTER_IMG[id];
+    var r = await sb.from('menu_config').update({ data: cfg }).eq('id', true);
+    if (r.error) throw new Error(r.error.message);
+    menuCfg = cfg;
+  }
+
+  async function setCounterPhoto(id, file) {
+    var blob = await shrink(file, 1000, 0.82);
+    var path = 'counter/' + id + '-' + Date.now() + '.jpg';
+    var up = await sb.storage.from(BUCKET).upload(path, blob, { contentType: 'image/jpeg', upsert: false });
+    if (up.error) throw new Error(up.error.message);
+    var url = publicUrl(path);
+    var old = pathOf(((menuCfg || {}).COUNTER_IMG || {})[id]);
+    try { await saveCounterImg(id, url); }
+    catch (e) { sb.storage.from(BUCKET).remove([path]); throw e; }
+    if (old && old !== path) sb.storage.from(BUCKET).remove([old]);
+  }
+
+  async function screenCounterPhotos() {
+    main.innerHTML = '<div class="muted">Loading…</div>';
+    if (!await loadMenu()) return;
+
+    var groups = counterList();
+    if (!groups.length) {
+      main.innerHTML = screenTop('Counter photos') +
+        '<div class="err">Could not read the counter list from the customer page.</div>';
+      wireBack();
+      return;
+    }
+
+    var imgs = (menuCfg || {}).COUNTER_IMG || {};
+    var all = [], have = 0;
+    groups.forEach(function (g) { g.items.forEach(function (c) { all.push(c); if (imgs[c.id]) have++; }); });
+
+    main.innerHTML = screenTop('Counter photos') +
+      '<div class="note">A photo of the counter itself &mdash; the chef at work, the station set up. ' +
+      'It replaces the drawing on the customer\'s live counters page. Shrunk on this phone before it is sent.</div>' +
+      '<div class="count">' + have + ' of ' + all.length + ' counters have a photo</div>' +
+      groups.map(function (g) {
+        return '<div class="count">' + esc(g.group) + '</div>' +
+          g.items.map(function (c) {
+            var u = imgs[c.id];
+            return '<div class="mrow prow" data-crow="' + c.id + '">' +
+              (u ? '<img class="thumb" src="' + esc(u) + '" alt="" loading="lazy">'
+                 : '<span class="thumb none">Drawing</span>') +
+              '<div class="nm">' + esc(c.name) + '</div>' +
+              '<button data-cpick="' + c.id + '">' + (u ? 'Change' : 'Add') + '</button>' +
+              (u ? '<button class="mini-x" data-cdrop="' + c.id + '" aria-label="Remove photo">&times;</button>' : '') +
+            '</div>';
+          }).join('');
+      }).join('') +
+      '<input type="file" id="cFile" accept="image/*" hidden>';
+
+    var picker = document.getElementById('cFile'), pending = null;
+    [].forEach.call(main.querySelectorAll('[data-cpick]'), function (b) {
+      b.onclick = function () { pending = b.dataset.cpick; picker.value = ''; picker.click(); };
+    });
+    picker.onchange = async function () {
+      var f = picker.files && picker.files[0];
+      if (!f || !pending) return;
+      var row = main.querySelector('[data-crow="' + pending + '"]');
+      var btn = row.querySelector('[data-cpick]');
+      btn.disabled = true; btn.textContent = 'Sending…';
+      try { await setCounterPhoto(pending, f); await screenCounterPhotos(); }
+      catch (e) {
+        btn.disabled = false; btn.textContent = 'Retry';
+        row.insertAdjacentHTML('afterend', '<div class="err">' + esc(e.message) + '</div>');
+      }
+    };
+
+    [].forEach.call(main.querySelectorAll('[data-cdrop]'), function (b) {
+      b.onclick = async function () {
+        if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.textContent = 'Sure?'; return; }
+        var id = b.dataset.cdrop, old = pathOf(((menuCfg || {}).COUNTER_IMG || {})[id]);
+        b.textContent = '…';
+        try {
+          await saveCounterImg(id, null);
+          if (old) sb.storage.from(BUCKET).remove([old]);
+          await screenCounterPhotos();
+        } catch (e) { b.textContent = '×'; b.dataset.armed = ''; alert(e.message); }
+      };
+    });
+
+    wireBack();
+  }
+
   SCREENS.dishes = screenDishes;
   SCREENS.upload = screenUpload;
   SCREENS.photos = screenPhotos;
+  SCREENS.counterphotos = screenCounterPhotos;
   SCREENS.photobulk = screenPhotoBulk;
   SCREENS.stock = screenStock;
   SCREENS.packages = screenPackages;
@@ -2131,6 +2235,7 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
       '<button data-m="stock">Out of stock</button>' +
       '<button data-m="upload">Upload a whole menu</button>' +
       '<button data-m="photos">Dish photos</button>' +
+      '<button data-m="counterphotos">Counter photos</button>' +
       '<button data-m="packages">Packages &amp; themes</button>' +
       '<h4>Paperwork</h4>' +
       '<button data-m="reports">Reports</button>' +
