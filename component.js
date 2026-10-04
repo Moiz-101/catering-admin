@@ -1,7 +1,7 @@
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { screen: null, name: '', cc: '+971', phone: '', emirate: '', date: '', time: '', pax: 18, paxEdit: null, pureVeg: false, minWarn: false, custMinOk: false, detailsWarn: false, type: null, layout: null, venue: null, cuisine: 'ic', pkg: null, theme: null, themeView: null, eventNote: '', returnTo: null, pdfMsg: '', zoom: null, notes: {}, noteFor: null, noteDraft: '', consent: false, setupEdit: null, counters: {}, tab: 'starters', fcu: 'all', sub: 0, note: '', sel: {}, selKey: '' };
+    this.state = { screen: null, name: '', cc: '+971', phone: '', emirate: '', date: '', time: '', pax: 18, paxEdit: null, pureVeg: false, minWarn: false, custMinOk: false, detailsWarn: false, type: null, layout: null, venue: null, cuisine: 'ic', pkg: null, theme: null, themeView: null, eventNote: '', returnTo: null, pdfMsg: '', zoom: null, notes: {}, noteFor: null, noteDraft: '', consent: false, setupEdit: null, counters: {}, counterItems: {}, cmNudge: 0, terms: false, termsWarn: false, tab: 'starters', fcu: 'all', sub: 0, note: '', sel: {}, selKey: '' };
     // Dummy photo tiles for now; real photos replace the glyph tile later.
     this.ITEMS = [];
     const add = (cu, cat, diet, sub, list) => list.forEach((n) => {
@@ -113,10 +113,183 @@ class Component extends DCLogic {
         { sv: 3, snv: 3, mv: 2, mnv: 3, rc: 2, nd: 1, ds: 3 }
       ]
     };
+    /* What each live counter serves. A section with a `need` is chosen from;
+       a section without one is served whole, which is how the sheet reads
+       wherever it gives no number. A counter missing from here has no menu to
+       show - Amritsari Chole Kulche and Makki di Roti are the dish itself. */
+    this.COUNTER_MENUS = {
+      chole: { sections: [ { title: 'Served at the counter', items: [
+        'Amritsari Chole', 'Kulche'] } ] },
+
+      makki: { sections: [ { title: 'Served at the counter', items: [
+        'Makki di Roti', 'Sarson da Saag'] } ] },
+
+      bbq: { sections: [ { title: 'On the grill', items: [
+        'Royal Firangi Barbecued Chicken',
+        'Charcoal Kissed Harissa Lamb Chops Royale',
+        'Charcoal Grilled Prawns with Garlic & Green Chillies',
+        'Charcoal Grilled Fish in Traditional Indian Spices',
+        'Lamb Mishaki Skewers',
+        'Ember Roasted Chicken Kebab Reserve',
+        'Golden Flame Mutton Kebab',
+        'Fire Roasted Corn with Lemon Butter Dust',
+        'Charcoal Grilled Cottage Cheese',
+        'Assorted Grilled Vegetable Lemon Butter Dust',
+        'Charcoal Grilled Fish',
+        'Shish Taouk'] } ] },
+
+      sizzler: { note: 'Choose one from each section', sections: [
+        { title: 'Staple', need: 1, items: ['Noodles', 'Rice'] },
+        { title: 'Mains', need: 1, items: ['Protein', 'Exotic Vegetables', 'Tofu'] },
+        { title: 'Sauces', need: 1, items: [
+          'Black Pepper', 'Hot Garlic', 'Sichuan Chilli',
+          'Orange Black Bean', 'BBQ Onion'] } ] },
+
+      mocktail: { sections: [ { title: 'Mocktails', items: [
+        'Mandarin Swirl', 'Orange Mojito', 'Lychee Lemongrass Iced Tea',
+        'Mango Basil Mojito', 'Frozen Lime', 'Watermelon Cilantro Crush',
+        'Kaffir Lime Cooler', 'Lychee Basil Quencher'] } ] },
+
+      chaat: { sections: [ { title: 'Chaat', items: [
+        'Semolina Panipuri', 'Samosa Chaat', 'Papdi Chaat', 'Dahi Bhalla',
+        'Aloo Tikki Chaat', 'Sev Puri', 'Dahi Puri', 'Palak Patta Chaat',
+        'Fruit Chaat', 'Raj Kachori'] } ] },
+
+      pasta: { note: 'Pick 2 from each section', sections: [
+        { title: 'Sauce', need: 2, items: [
+          "Rosso - Sugo all'Arrabbiata", 'Alfredo Cream Sauce', 'Marinara'] },
+        { title: 'Pasta', need: 2, items: [
+          'Penne', 'Fusilli', 'Spaghetti', 'Macaroni', 'Ravioli'] },
+        { title: 'Add-ons', need: 2, items: [
+          'Poultry', 'Exotic Vegetables', 'Shrimps'] } ] },
+
+      khowsuey: { sections: [ { title: 'Khao Suey with', items: [
+        'Exotic Vegetables', 'Poultry', 'Shrimps'] } ] },
+
+      wok: { sections: [
+        { title: 'Base', items: ['Rice', 'Noodles'] },
+        { title: 'Protein', items: [
+          'Poultry', 'Shrimps', 'Lamb', 'Tofu', 'Cottage Cheese'] },
+        { title: 'Exotic Vegetables', need: 4, items: [
+          'Broccoli', 'Baby Corn', 'Mushroom', 'Chinese Cabbage', 'Bok Choy',
+          'Bell Pepper', 'French Beans', 'Carrots', 'Spinach', 'Snow Peas'] } ] }
+    };
     /* Live counters, offered when there is a live station. Grouped so the
        list reads at a glance rather than as sixteen rows, and ordered with
        the ones most often asked for at the top of each group. */
+    /* Breakfast: four packages, each choosing from its own list rather than
+       from the 147 dishes. Tea and coffee come with every one of them and are
+       not counted against the choice, which is how the Indian menu is written
+       ("any 4 items with tea & coffee") and how the others read alongside it. */
+    this.PICK_MENUS = {
+      bf: {
+        label: 'Breakfast',
+        packages: [
+          { name: 'Indian Breakfast', price: 90, min: 1800,
+            sections: [
+              { title: 'Breakfast dishes', need: 4, items: [
+                'Poha', 'Dosa', 'Idli', 'Paratha', 'Puri Bhaji', 'Lassi', 'Buttermilk'] }
+            ],
+            included: ['Tea', 'Coffee'] },
+
+          { name: 'English Breakfast', price: 105, min: 2600,
+            sections: [
+              { title: 'Breakfast dishes', need: 5, items: [
+                'Assorted Eggs', 'Crispy Bacon', 'Chicken / Beef Sausages',
+                'Assorted Cereals', 'Bakery Basket', 'Assorted Meat Selection',
+                'Fish Selection', 'Assorted Yoghurt', 'Fresh Seasonal Fruits'] }
+            ],
+            included: ['Tea', 'Coffee'] },
+
+          { name: 'American Breakfast', price: 105, min: 2600,
+            sections: [
+              { title: 'Breakfast dishes', need: 5, items: [
+                'Assorted Eggs', 'Crispy Bacon', 'Chicken / Beef Sausages',
+                'Assorted Cereals', 'Bakery Basket', 'Assorted Meat Selection',
+                'Assorted Yoghurt', 'Fresh Seasonal Fruits'] }
+            ],
+            included: ['Tea', 'Coffee'] },
+
+          { name: 'Continental Breakfast', price: 105, min: 2600,
+            sections: [
+              { title: 'Fresh Juices', need: 2, items: [
+                'Fresh Orange Juice', 'Fresh Watermelon Juice', 'Fresh Pineapple Juice'] },
+              { title: 'Cut Fruits', need: 2, items: [
+                'Fresh Seasonal Cut Fruits Platter', 'Sliced Watermelon',
+                'Fresh Pineapple', 'Seasonal Melon'] },
+              { title: 'Breads & Bakery', need: 2, items: [
+                'Assorted Bread Rolls', 'White & Brown Bread', 'Butter Croissants',
+                'Danish Pastries', 'Toasted Bread'] },
+              { title: 'Butter & Preserves', need: 2, items: [
+                'Salted Butter', 'Unsalted Butter', 'Strawberry Jam',
+                'Orange Marmalade', 'Honey'] },
+              { title: 'Tea & Coffee', need: 2, items: [
+                'English Breakfast Tea', 'Green Tea', 'Masala Tea',
+                'Freshly Brewed Coffee', 'Cappuccino', 'Espresso'] }
+            ],
+            included: [] }
+        ]
+      }
+    };
+    /* Set menus: a package is the whole list, not a choice from it, so these
+       skip the dish-picking screen entirely. Each carries its own minimum
+       order value, unlike the Indian and Chinese packages which share one.
+       Prices are before VAT, as the menus are quoted. */
+    this.SET_MENUS = {
+      ht: {
+        label: 'High Tea',
+        packages: [
+          { name: 'Finger Bites High Tea', price: 85, min: 2000, sections: [
+            { title: 'Tea & Coffee', items: ['English Breakfast', 'Green Tea', 'Masala Chai', 'Coffee'] },
+            { title: 'Finger Sandwiches & Sliders', items: [
+              'Veg Finger Sandwich - Cucumber & Cream Cheese',
+              'Veg Finger Sandwich - Tomato & Cheese',
+              'Veg Finger Sandwich - Veg Mayo',
+              'Mini Veg Cheese Slider',
+              'Mini Butter Chicken Slider'] },
+            { title: 'Finger Bite Appetizers', items: [
+              'Tandoori Chicken Wings', 'Shanghai Spring Rolls',
+              'Double Crumbed Fried Fish', 'Mini Chicken Kibbeh'] },
+            { title: 'Croissants', items: ['Butter Croissant', 'Cheese Croissant'] },
+            { title: 'Cookies & Biscuits', items: [
+              'Choco-chip Cookie', 'Butter Cookie', 'Chocolate Roll', 'Assorted Biscuits'] }
+          ] },
+          { name: 'High Tea Menu Plan', price: 95, min: 2500, sections: [
+            { title: 'Tea & Coffee', items: ['English Breakfast', 'Green Tea', 'Masala Chai', 'Coffee'] },
+            { title: 'Finger Sandwiches', items: [
+              'Veg Finger Sandwich - Cucumber & Cream Cheese',
+              'Veg Finger Sandwich - Tomato & Cheese',
+              'Veg Finger Sandwich - Veg Mayo',
+              'Mini Veg Cheese Slider'] },
+            { title: 'Savory', items: [
+              'Shanghai Spring Rolls', 'Cottage Cheese Wrap',
+              'Corn Cheese Bowl', 'Firangi Chicken Tikka'] },
+            { title: 'Croissants', items: ['Butter Croissant', 'Cheese Croissant'] },
+            { title: 'Pastries', items: ['Chocolate Pastry', 'Black Forest Pastry'] },
+            { title: 'Cakes', items: ['Vanilla Sponge Cake', 'Chocolate Brownie'] },
+            { title: 'Cookies & Biscuits', items: [
+              'Choco-chip Cookie', 'Butter Cookie', 'Chocolate Roll', 'Assorted Biscuits'] }
+          ] }
+        ]
+      }
+    };
+    /* What the customer agrees to before the request goes in. The first three
+       are the owner's own wording; the rest come from the terms already on
+       Dragon Empire's written proposals, so nothing here is invented. */
+    this.TERMS = [
+      'Please ask our experts for the appropriate setup for your indoor live stations.',
+      'Event duration is 4 hours. Beyond that, AED 300 per hour applies.',
+      'Packages do not apply to house helpers or drivers unless they are counted in the guest list. We have separate combo meals designed for them.',
+      'The prices shown are an estimate. Your final quote is confirmed by our team after review.',
+      'A minimum order value applies to each package.',
+      'A 60% advance payment confirms your booking.',
+      'Cancellations must be made at least 48 hours before the event. After that, the full amount is charged.',
+      'Charges apply for any guests beyond the confirmed number.',
+      'Entry permits for the villa or community are arranged by you.'
+    ];
     this.COUNTER_IMG = {};     // counter id -> photo, set from the panel
+    // counters that ship with a photograph in this page's own images folder
+    this.COUNTER_SHOT = ['bao', 'bbq', 'chaat', 'chole', 'dimsum', 'khowsuey', 'makki', 'mocktail', 'pasta', 'pizza', 'shawarma', 'sizzler', 'sushi', 'tandoor', 'tawa', 'wok'];
     this.COUNTERS = [
       { group: 'Grill & BBQ', bg: '#F6E1CE', items: [
         { id: 'bbq', name: 'BBQ Counter', icon: 'flame' },
@@ -200,15 +373,62 @@ class Component extends DCLogic {
       { id: 'ic', label: 'Indian & Chinese', grow: 1.7 },
       { id: 'in', label: 'Indian', grow: 1 },
       { id: 'ch', label: 'Chinese', grow: 1 }
-    ];
-    const prices = (PRICES[st.cuisine] || {})[setup] || [0, 0, 0, 0];
+    ].concat(setup === 'buffet' || setup === 'both'
+      ? Object.keys(this.SET_MENUS || {}).map((k) => ({ id: k, label: this.SET_MENUS[k].label, grow: 1.2 }))
+          .concat(Object.keys(this.PICK_MENUS || {}).map((k) => ({ id: k, label: this.PICK_MENUS[k].label, grow: 1.2 })))
+      : []);
+    const sm = this.setMenu(st.cuisine);
+    const pm = this.pickMenu(st.cuisine);
+    const prices = sm ? sm.packages.map((x) => x.price)
+                 : pm ? pm.packages.map((x) => x.price)
+                      : ((PRICES[st.cuisine] || {})[setup] || [0, 0, 0, 0]);
     const sel = (on) => ({
       border: on ? '#C9963B' : '#E4D9C2',
       shadow: on ? '0 6px 16px rgba(201,150,59,0.35)' : '0 1px 2px rgba(14,59,51,0.06)'
     });
 
     const saves = ((this.SAVE || {})[setup] || {})[st.cuisine] || [];
-    const pkgs = TIERS.map((t, i) => {
+    // A set menu's cards are the menu itself: every section, every item, and
+    // the minimum order that package carries.
+    const setPkgs = sm ? sm.packages.map((pk, i) => {
+      const on = st.pkg === i;
+      return Object.assign({
+        name: pk.name,
+        price: pk.price,
+        priceUnit: 'Dh + VAT / person',
+        priceFont: '34px',
+        onOffer: false, wasPrice: '', saveText: '',
+        cardW: '238px', rowDisplay: 'flex', rowDir: 'row', rowGap: '10px', rowAlign: 'right',
+        popular: false,
+        on: on,
+        pick: () => this.setState({ pkg: st.pkg === i ? null : i, consent: false, minWarn: false }),
+        rows: pk.sections.map((sec) => ({
+                 k: sec.title,
+                 v: sec.items.length + (sec.items.length === 1 ? ' item' : ' items') }))
+      }, sel(on));
+    }) : null;
+
+    // a pick menu's card says how many are chosen from each of its sections
+    const pickPkgs = pm ? pm.packages.map((pk, i) => {
+      const on = st.pkg === i;
+      const rows = pk.sections.map((sec) => ({
+        k: sec.title,
+        v: 'Any ' + sec.need + ' of ' + sec.items.length
+      }));
+      if (pk.included && pk.included.length) {
+        rows.push({ k: 'Included', v: pk.included.join(' · ') });
+      }
+      return Object.assign({
+        name: pk.name, price: pk.price, priceUnit: 'Dh / person', priceFont: '34px',
+        onOffer: false, wasPrice: '', saveText: '',
+        cardW: '238px', rowDisplay: 'flex', rowDir: 'row', rowGap: '10px', rowAlign: 'right',
+        popular: false, on: on,
+        pick: () => this.setState({ pkg: st.pkg === i ? null : i, consent: false, minWarn: false, sel: {}, notes: {} }),
+        rows: rows
+      }, sel(on));
+    }) : null;
+
+    const pkgs = setPkgs || pickPkgs || TIERS.map((t, i) => {
       const on = st.pkg === i;
       const save = Math.max(0, parseInt(saves[i], 10) || 0);
       // the card lists whatever the picker is going to ask for, so the two
@@ -241,6 +461,7 @@ class Component extends DCLogic {
         onOffer: shown && save > 0,
         wasPrice: save > 0 ? fmt(prices[i] + save) : '',
         saveText: save > 0 ? 'SAVE ' + save + ' Dh' : '',
+        cardW: '238px', rowDisplay: 'flex', rowDir: 'row', rowGap: '10px', rowAlign: 'right',
         popular: i === popular,
         on: on,
         pick: () => this.setState({ pkg: st.pkg === i ? null : i, consent: false, minWarn: false }),
@@ -250,22 +471,27 @@ class Component extends DCLogic {
 
     const isCustom = st.pkg === 'custom';
     const hasPkg = typeof st.pkg === 'number';
-    const priced = this.priced(setup);
+    const priced = (sm || pm) ? true : this.priced(setup);
     const price = hasPkg ? prices[st.pkg] : 0;
     const raw = price * pax;
-    const belowMin = priced && hasPkg && raw < MIN;
+    const smp = sm || pm;
+    const minFor = (smp && hasPkg && smp.packages[st.pkg]) ? smp.packages[st.pkg].min : MIN;
+    const belowMin = priced && hasPkg && raw < minFor;
     const applied = belowMin && st.consent;
     let totalText = '—', totalSub = 'Pick a package to see the price', totalColor = '#0E3B33';
     if (isCustom) { totalText = 'Custom menu'; totalSub = 'Base ' + this.catRates().base + ' Dh + price of each dish you pick'; }
     if (hasPkg) {
-      totalText = priced ? fmt(applied ? MIN : raw) + ' Dh' : 'On request';
+      totalText = priced ? fmt(applied ? minFor : raw) + ' Dh' + (sm ? ' + VAT' : '') : 'On request';
       totalSub = !priced ? 'Our team will confirm the price for this setup'
-               : (applied ? 'Minimum applied (was ' + fmt(raw) + ' Dh)' : pax + ' guests × ' + price + ' Dh');
+               : (applied ? 'Minimum applied (was ' + fmt(raw) + ' Dh)'
+                          : pax + ' guests × ' + price + ' Dh' + (sm ? ' + VAT' : ''));
       if (belowMin && !st.consent) totalColor = st.minWarn ? '#B3261E' : '#8A3B12';
     }
     const ready = isCustom || hasPkg;
 
     return {
+      picksDishes: !sm,
+      offersCustom: !sm && !pm,
       cuisines: CUISINES.map((c) => {
         const on = st.cuisine === c.id;
         return {
@@ -279,10 +505,12 @@ class Component extends DCLogic {
       pkgs: pkgs,
       custom: Object.assign({ on: isCustom, off: !isCustom, pick: () => this.setState({ pkg: isCustom ? null : 'custom', consent: false, minWarn: false }) }, sel(isCustom)),
       pax: pax,
-      pkgCaption: pv ? 'Pure Veg menu · salads & sides incl.' : 'Salads & sides included',
+      pkgCaption: sm ? 'Everything listed is included'
+        : pm ? 'Tea & coffee included'
+        : (pv ? 'Pure Veg menu · salads & sides incl.' : 'Salads & sides included'),
       belowMin: belowMin,
-      needPax: hasPkg ? Math.ceil(MIN / price) : pax,
-      bumpPax: () => this.setState({ pax: Math.ceil(MIN / price), consent: false, minWarn: false }),
+      needPax: hasPkg ? Math.ceil(minFor / price) : pax,
+      bumpPax: () => this.setState({ pax: Math.ceil(minFor / price), consent: false, minWarn: false }),
       consent: st.consent,
       toggleConsent: () => this.setState({ consent: !this.state.consent }),
       totalText: totalText,
@@ -293,12 +521,13 @@ class Component extends DCLogic {
       // under the minimum: one line under the total; it turns red if Save & Next is tapped
       minOpen: belowMin && !st.minWarn && !st.consent,
       totalSubShown: !belowMin || !!st.consent,
-      minHint: hasPkg ? 'Min. 2,000 Dh · Add ' + (Math.ceil(MIN / price) - pax) + (Math.ceil(MIN / price) - pax === 1 ? ' guest' : ' guests') : '',
+      minHint: hasPkg ? 'Min. ' + fmt(minFor) + ' Dh · Add ' + (Math.ceil(minFor / price) - pax) + (Math.ceil(minFor / price) - pax === 1 ? ' guest' : ' guests') : '',
       minHintColor: '#8A3B12',
       minWarnOn: false,
       // after Save & Next is refused: add guests, or tick to pay the minimum
       minRowShown: belowMin && !!st.minWarn,
-      minAddLabel: hasPkg ? 'Add ' + (Math.ceil(MIN / price) - pax) + (Math.ceil(MIN / price) - pax === 1 ? ' guest' : ' guests') : '',
+      minPayLabel: "I'll pay the " + fmt(minFor) + ' Dh minimum',
+      minAddLabel: hasPkg ? 'Add ' + (Math.ceil(minFor / price) - pax) + (Math.ceil(minFor / price) - pax === 1 ? ' guest' : ' guests') : '',
       notReady: !ready,
       btnOpacity: 1
     };
@@ -321,9 +550,21 @@ class Component extends DCLogic {
     const isDaal = (x) => x.cat === 'main' &&
       (x.sub === 'Daal' || /(^|\s)daa?l(\s|$)/i.test(x.name));
     const cuLabel = { ic: 'Indian & Chinese', in: 'Indian', ch: 'Chinese' }[cuisine];
-    const pool = this.ITEMS.filter((x) => (cuisine === 'ic' || x.cu === cuisine) && !(pv && x.diet === 'nonveg'));
+    // a pick menu brings its own items and its own sections
+    const pm = this.pickPool();
+    const pool = pm ? pm.items
+      : this.ITEMS.filter((x) => (cuisine === 'ic' || x.cu === cuisine) && !(pv && x.diet === 'nonveg'));
 
-    const DEFS = {
+    const PICK_DEFS = {}, PICK_TABS = [];
+    if (pm) {
+      pm.pack.sections.forEach((sec, si) => {
+        const key = 'sec' + si;
+        PICK_TABS.push({ id: key, label: sec.title });
+        PICK_DEFS[key] = [{ id: key, title: sec.title, short: sec.title,
+                            match: (x) => x.cat === key, need: sec.need }];
+      });
+    }
+    const DEFS = pm ? PICK_DEFS : {
       starters: [
         { id: 'sv', title: 'Veg Starters', short: 'Veg', match: (x) => x.cat === 'starter' && x.diet === 'veg', need: q && (pv ? q.sv + q.snv : q.sv) },
         { id: 'snv', title: 'Non-Veg Starters', short: 'Non-Veg', match: (x) => x.cat === 'starter' && x.diet === 'nonveg', need: q && q.snv }
@@ -349,15 +590,25 @@ class Component extends DCLogic {
         { id: 'ds', title: 'Desserts', match: (x) => x.cat === 'dessert', need: q && q.ds }
       ]
     };
-    const TABS = [
+    const TABS = pm ? PICK_TABS : [
       { id: 'starters', label: 'Starters' },
       { id: 'mains', label: 'Mains' },
       { id: 'staples', label: 'Staples' },
       { id: 'dessert', label: 'Dessert' }
     ];
 
-    const TILE = { iBowl: '#EEE0C4', iDump: '#F3E6C9', iRoll: '#E4EBD5', iSkew: '#F3DCCB', iBread: '#F1E3C0', iSweet: '#F3DCE0' };
+    const TILE = { iBowl: '#EEE0C4', iDump: '#F3E6C9', iRoll: '#E4EBD5', iSkew: '#F3DCCB', iBread: '#F1E3C0', iSweet: '#F3DCE0', iCup: '#E7E3D2' };
     const iconOf = (x) => {
+      // a pick menu's items are not dishes from the menu, so they are read by
+      // name; a breakfast of identical bowls tells the customer nothing
+      if (pm) {
+        const n = x.name.toLowerCase();
+        if (/juice|tea|coffee|lassi|buttermilk|cappuccino|espresso/.test(n)) return 'iCup';
+        if (/bread|croissant|pastry|toast|bakery|paratha|puri|dosa|idli|roll/.test(n)) return 'iBread';
+        if (/egg|bacon|sausage|meat|fish|tikka/.test(n)) return 'iSkew';
+        if (/fruit|melon|pineapple|watermelon|jam|marmalade|honey|yoghurt|cereal|butter/.test(n)) return 'iSweet';
+        return 'iBowl';
+      }
       if (x.cat === 'dessert') return 'iSweet';
       if (x.cat === 'bread') return 'iBread';
       if (x.sub.indexOf('Dim sum') === 0 || x.sub.indexOf('Bao') === 0) return 'iDump';
@@ -381,6 +632,7 @@ class Component extends DCLogic {
       });
     });
 
+    const curTab = (built[st.tab] ? st.tab : (TABS[0] ? TABS[0].id : st.tab));
     const tabInfo = TABS.map((tb) => {
       const gs = built[tb.id];
       const need = gs.reduce((a, g) => a + (g.need || 0), 0);
@@ -392,7 +644,7 @@ class Component extends DCLogic {
     Object.keys(built).forEach((k) => built[k].forEach((g) => { totalPicked += g.count; }));
 
     const tabs = tabInfo.map((t) => {
-      const on = st.tab === t.tb.id;
+      const on = curTab === t.tb.id;
       return {
         label: t.tb.label, on: on,
         count: isCustom ? (t.done + ' picked') : (t.done + ' of ' + t.need),
@@ -415,7 +667,7 @@ class Component extends DCLogic {
       };
     });
 
-    const tabGroups = built[st.tab] || [];
+    const tabGroups = built[curTab] || [];
     const subIdx = Math.min(st.sub || 0, Math.max(tabGroups.length - 1, 0));
     const showSubs = tabGroups.length > 1;
     const subs = tabGroups.map((g, i) => {
@@ -478,7 +730,7 @@ class Component extends DCLogic {
               if (idx >= 0) {
                 move = { sub: idx, note: g.def.short + ' done. Now choose ' + tabGroups[idx].need + ' ' + tabGroups[idx].def.short + '.' };
               } else {
-                const here = TABS.findIndex((t) => t.id === st.tab);
+                const here = TABS.findIndex((t) => t.id === curTab);
                 const order = TABS.slice(here + 1).concat(TABS.slice(0, here));
                 for (let k = 0; k < order.length && !move; k++) {
                   const gs = built[order[k].id];
@@ -497,7 +749,7 @@ class Component extends DCLogic {
               }, 550);
             }
           };
-          ['iBowl', 'iDump', 'iRoll', 'iSkew', 'iBread', 'iSweet'].forEach((k) => { o[k] = (k === icon); });
+          ['iBowl', 'iDump', 'iRoll', 'iSkew', 'iBread', 'iSweet', 'iCup'].forEach((k) => { o[k] = (k === icon); });
           // the owner's own photo first, then the one built into this page,
           // and the drawn icon when there is neither
           const byCourse = window.DISH_PHOTOS_BY_COURSE || {};
@@ -621,7 +873,15 @@ class Component extends DCLogic {
       zBtnColor: zo && zo.on ? '#0E3B33' : '#FBF6EA',
       zBtnOpacity: zo && zo.locked ? 0.45 : 1,
       showRate: isCustom,
-      rateText: (() => { const c = this.catRates(); const t = st.tab; const k = { starters: ['starter', c.starters], mains: ['main course dish', c.mains], staples: ['staple', c.staples], dessert: ['dessert', c.dessert] }[t]; return 'Each ' + k[0] + ' adds ' + k[1] + ' Dh / person'; })(),
+      // only a custom menu is priced per dish, and a pick menu's tabs are its
+      // own sections, which this never knew about
+      rateText: (() => {
+        if (!isCustom) return '';
+        const c = this.catRates();
+        const k = { starters: ['starter', c.starters], mains: ['main course dish', c.mains],
+                    staples: ['staple', c.staples], dessert: ['dessert', c.dessert] }[st.tab];
+        return k ? 'Each ' + k[0] + ' adds ' + k[1] + ' Dh / person' : '';
+      })(),
       custTotal: custTotal,
       custPP: custPP,
       custSub: custSub,
@@ -637,8 +897,14 @@ class Component extends DCLogic {
     const MIN = 2000;
     const fmt = (n) => n.toLocaleString('en-US');
     const setup = this.setupKey();
-    const P = (this.PRICES[st.cuisine] || {})[setup] || [0, 0, 0, 0];
-    const cuisine = { ic: 'Indian & Chinese', in: 'Indian', ch: 'Chinese' }[st.cuisine];
+    const sm = this.setMenu(st.cuisine);
+    const pmenu = this.pickMenu(st.cuisine);
+    const pp2 = this.pickPool();
+    const P = sm ? sm.packages.map((x) => x.price)
+              : pmenu ? pmenu.packages.map((x) => x.price)
+                 : ((this.PRICES[st.cuisine] || {})[setup] || [0, 0, 0, 0]);
+    const cuisine = sm ? sm.label : pmenu ? pmenu.label
+                       : { ic: 'Indian & Chinese', in: 'Indian', ch: 'Chinese' }[st.cuisine];
     const isCustom = st.pkg === 'custom', hasPkg = typeof st.pkg === 'number';
     const g = { starters: [], mains: [], staples: [], dessert: [] };
     this.ITEMS.forEach((x) => {
@@ -647,12 +913,35 @@ class Component extends DCLogic {
       const note = (st.notes[x.id] || '').trim();
       g[k].push({ name: x.name, note: note, hasNote: !!note });
     });
-    const groups = [['Starters', g.starters], ['Main course', g.mains], ['Staples', g.staples], ['Dessert', g.dessert]].filter((a) => a[1].length).map((a) => ({ title: a[0] + ' (' + a[1].length + ')', items: a[1] }));
+    // a set menu's groups are the menu itself, not what was ticked
+    const smPack = (sm && hasPkg) ? sm.packages[st.pkg] : null;
+    let pickGroups = null;
+    if (pp2) {
+      pickGroups = pp2.pack.sections.map((sec, si) => ({
+        title: sec.title,
+        items: pp2.items.filter((x) => x.cat === 'sec' + si && st.sel[x.id])
+                        .map((x) => ({ name: x.name, note: '', hasNote: false }))
+      })).filter((g) => g.items.length)
+        .map((g) => ({ title: g.title + ' (' + g.items.length + ')', items: g.items }));
+      if (pp2.pack.included && pp2.pack.included.length) {
+        pickGroups.push({ title: 'Included',
+          items: pp2.pack.included.map((n) => ({ name: n, note: '', hasNote: false })) });
+      }
+    }
+    const groups = pickGroups || (smPack
+      ? smPack.sections.map((sec) => ({ title: sec.title + ' (' + sec.items.length + ')',
+          items: sec.items.map((n) => ({ name: n, note: '', hasNote: false })) }))
+      : [['Starters', g.starters], ['Main course', g.mains], ['Staples', g.staples], ['Dessert', g.dessert]].filter((a) => a[1].length).map((a) => ({ title: a[0] + ' (' + a[1].length + ')', items: a[1] })));
+    const withCounters = groups.concat(this.counterGroupsForQuote());
     let pp = 0;
     if (hasPkg) pp = P[st.pkg];
     else if (isCustom) pp = this.customPP({ starters: g.starters.length, mains: g.mains.length, staples: g.staples.length, dessert: g.dessert.length });
     const raw = pp * st.pax;
-    const menuTotal = pp > 0 ? Math.max(raw, MIN) : 0;
+    const pkPack = pp2 ? pp2.pack : null;
+    const noPkg = !this.offersPackages();
+    const minFor = smPack ? smPack.min : (pkPack ? pkPack.min : MIN);
+    const vat = sm ? ' + VAT' : '';
+    const menuTotal = pp > 0 ? Math.max(raw, minFor) : 0;
     const th = this.THEMES.find((t) => t.id === st.theme) || null;
     const themePrice = th ? th.price : 0;
     const grand = menuTotal + themePrice;
@@ -671,21 +960,31 @@ class Component extends DCLogic {
       layoutLabel: this.layoutLabelOf(st.layout) || 'Not selected',
       venueLabel: st.venue === 'indoor' ? 'Indoor' : (st.venue === 'outdoor' ? 'Outdoor' : 'Not selected'),
       isOnsite: st.type === 'onsite',
+      isSetMenu: !!this.setMenu(st.cuisine),
+      dishesLabel: this.setMenu(st.cuisine) ? 'What is included'
+        : (this.offersPackages() ? 'Selected dishes' : 'What will be served'),
+      canEditDishes: !this.setMenu(st.cuisine) && this.offersPackages(),
+      picksDishes: !this.setMenu(st.cuisine),
       hasCounters: this.hasCounters(),
+      hasPackages: this.offersPackages(),
+      noPackages: !this.offersPackages(),
       countersText: this.pickedCounters().join(', ') || 'None chosen',
-      pkgLabel: isCustom ? 'Custom menu' : (hasPkg ? 'Package ' + (st.pkg + 1) : 'Not selected'),
+      pkgLabel: isCustom ? 'Custom menu'
+        : ((smPack || pkPack) ? (smPack || pkPack).name
+           : (hasPkg ? 'Package ' + (st.pkg + 1) : 'Not selected')),
       cuisine: cuisine + (st.pureVeg ? ' (Pure Veg)' : ''),
-      ppText: pp > 0 ? pp + ' Dh' : (this.priced() ? '-' : 'On request'),
-      groups: groups,
+      ppText: pp > 0 ? pp + ' Dh' + vat : ((noPkg || !this.priced()) ? 'On request' : '-'),
+      groups: withCounters,
       themeLabel: th ? th.name + (th.price ? ' (+ ' + fmt(th.price) + ' Dh)' : ' (Free)') : 'No theme',
       notesText: (st.eventNote || '').trim() || 'None',
       menuRowLabel: pp > 0 ? 'Menu: ' + st.pax + ' guests x ' + pp + ' Dh' : 'Menu',
-      menuRowValue: pp > 0 ? fmt(raw) + ' Dh' : (this.priced() ? '-' : 'On request'),
-      showMin: pp > 0 && raw < MIN,
-      minValue: '+ ' + fmt(Math.max(MIN - raw, 0)) + ' Dh',
+      menuRowValue: pp > 0 ? fmt(raw) + ' Dh' + vat : ((noPkg || !this.priced()) ? 'On request' : '-'),
+      showMin: pp > 0 && raw < minFor,
+      minValue: '+ ' + fmt(Math.max(minFor - raw, 0)) + ' Dh',
       themeRowLabel: th ? 'Theme: ' + th.name : 'Theme',
       themeRowValue: th ? (th.price ? '+ ' + fmt(th.price) + ' Dh' : 'Free') : 'None',
-      grand: (grand > 0 || this.priced()) ? fmt(grand) + ' Dh' : 'On request', grandNum: grand, menuTotal: menuTotal, themePrice: themePrice, th: th
+      grand: (noPkg && pp === 0) ? 'On request'
+        : ((grand > 0 || this.priced()) ? fmt(grand) + ' Dh' + vat : 'On request'), grandNum: grand, menuTotal: menuTotal, themePrice: themePrice, th: th
     };
   }
   /* One page, on the printed border. `bg` is optional:
@@ -899,6 +1198,7 @@ class Component extends DCLogic {
       if (config.SAVE) this.SAVE = config.SAVE;
       if (config.QB) this.QB = config.QB;
       if (config.COUNTER_IMG) this.COUNTER_IMG = config.COUNTER_IMG;
+      if (Array.isArray(config.TERMS) && config.TERMS.length) this.TERMS = config.TERMS;
     }
     // dish ids are positions, so anything picked before the swap no longer means the same thing
     this.setState({ sel: {}, notes: {} });
@@ -928,6 +1228,11 @@ class Component extends DCLogic {
     return this.REF;
   }
   async downloadPdf() {
+    if (!this.state.terms) {
+      this._scrollTo = 'terms';
+      this.setState({ termsWarn: true, pdfMsg: '' });
+      return;
+    }
     this.setState({ pdfMsg: 'Confirming and preparing your PDF...' });
     await this.ensureRef();                 // must happen before the PDF is drawn
     const filename = 'Catering-Order-' + this.REF + '.pdf';
@@ -980,7 +1285,9 @@ class Component extends DCLogic {
   // Anything missing just falls back to the drawing, so the page is never bare.
   counterPhoto(id) {
     const u = (this.COUNTER_IMG || {})[id];
-    return u ? 'url("' + String(u).replace(/"/g, '%22') + '")' : '';
+    if (u) return 'url("' + String(u).replace(/"/g, '%22') + '")';
+    return (this.COUNTER_SHOT || []).indexOf(id) !== -1
+      ? 'url("images/counters/' + id + '.jpg")' : '';
   }
   /* A little illustration for every counter, in the same flat style as the
      setup cards. They are drawn here rather than in the template because
@@ -1067,6 +1374,117 @@ class Component extends DCLogic {
       '<rect width="160" height="100" fill="' + bg + '"/>' + top + (BODY[id] || '') + '</svg>';
     return 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '")';
   }
+  /* Which drawn icon a set-menu item gets, and the tile colour behind it,
+     matching the dish tiles so the two screens look like one app. Chosen from
+     the item's own name first, then from the section it sits in. */
+  setIcon(name, section) {
+    const n = (name || '').toLowerCase(), sc = (section || '').toLowerCase();
+    const pick = (k) => ({
+      sCup: k === 'cup', sBread: k === 'bread', sRoll: k === 'roll',
+      sSkew: k === 'skew', sSweet: k === 'sweet', sBowl: k === 'bowl',
+      tile: { cup: '#E7E3D2', bread: '#F1E3C0', roll: '#E4EBD5',
+              skew: '#F3DCCB', sweet: '#F3DCE0', bowl: '#EEE0C4' }[k]
+    });
+    // the section wins for drinks: "English Breakfast" is a tea, and nothing
+    // in its own name says so
+    if (/tea|coffee/.test(sc)) return pick('cup');
+    if (/tea|coffee|chai/.test(n)) return pick('cup');
+    if (/roll|wrap|spring/.test(n) && !/chocolate/.test(n)) return pick('roll');
+    if (/wing|tikka|kibbeh|kebab|grill|barbecu|bbq|roast|chop|skewer|taouk|shish|mishaki/.test(n))
+      return pick('skew');
+    if (/sandwich|slider|croissant|bread|kulcha|roti/.test(n)) return pick('bread');
+    if (/cookie|biscuit|pastry|cake|brownie|chocolate/.test(n)) return pick('sweet');
+    if (/cookie|biscuit|pastr|cake/.test(sc)) return pick('sweet');
+    if (/croissant|sandwich/.test(sc)) return pick('bread');
+    return pick('bowl');
+  }
+  // a menu whose items are chosen from its own lists, not from the 147 dishes
+  pickMenu(cu) {
+    const m = (this.PICK_MENUS || {})[cu || this.state.cuisine];
+    return m && m.packages && m.packages.length ? m : null;
+  }
+  /* The items of the chosen pick-menu package, shaped like dishes so the
+     choosing screen, the counts and the order sheet all work unchanged.
+     One synthetic category per section. */
+  pickPool() {
+    const st = this.state;
+    const m = this.pickMenu(st.cuisine);
+    const pk = (m && typeof st.pkg === 'number') ? m.packages[st.pkg] : null;
+    if (!pk) return null;
+    const out = [];
+    pk.sections.forEach((sec, si) => {
+      sec.items.forEach((n, ni) => {
+        out.push({ id: 'p' + si + '_' + ni, name: n, cat: 'sec' + si,
+                   cu: st.cuisine, diet: null, sub: sec.title, note: '' });
+      });
+    });
+    return { pack: pk, items: out };
+  }
+  // the set menu for this cuisine, or null when it picks dishes the usual way
+  setMenu(cu) {
+    const m = (this.SET_MENUS || {})[cu || this.state.cuisine];
+    return m && m.packages && m.packages.length ? m : null;
+  }
+  // one group per chosen counter, listing what it will serve
+  counterGroupsForQuote() {
+    const st = this.state;
+    const sel = st.counterItems || {};
+    return this.menuCounters().map((c) => {
+      const names = [];
+      c.menu.sections.forEach((sec, si) => {
+        sec.items.forEach((n, ii) => {
+          const chosen = sec.need ? !!sel[this.cmKey(c.id, si, ii)] : true;
+          if (chosen) names.push(n);
+        });
+      });
+      return { title: c.name + ' (' + names.length + ')',
+               items: names.map((n) => ({ name: n, note: '', hasNote: false })) };
+    }).filter((g) => g.items.length);
+  }
+  // the counters the customer picked that actually have a menu to show
+  menuCounters() {
+    const on = this.state.counters || {};
+    const out = [];
+    (this.COUNTERS || []).forEach((g) => g.items.forEach((c) => {
+      const m = (this.COUNTER_MENUS || {})[c.id];
+      if (on[c.id] && m && m.sections && m.sections.length) out.push({ id: c.id, name: c.name, menu: m });
+    }));
+    return out;
+  }
+  // one key per item, so a choice survives changing counters and coming back
+  cmKey(counterId, si, ii) { return counterId + ':' + si + ':' + ii; }
+
+  /* Every section of every chosen counter, with how many are still needed.
+     Sections without a number are served whole and have nothing to tick. */
+  counterMenuState() {
+    const st = this.state;
+    const list = this.menuCounters();
+    const sel = st.counterItems || {};
+    const counters = list.map((c) => {
+      const sections = c.menu.sections.map((sec, si) => {
+        const items = sec.items.map((n, ii) => {
+          const key = this.cmKey(c.id, si, ii);
+          return { name: n, key: key, on: !!sel[key] };
+        });
+        const picked = items.filter((x) => x.on).length;
+        const need = sec.need || 0;
+        return { title: sec.title, need: need, picked: picked, items: items,
+                 choose: need > 0, full: need > 0 && picked >= need };
+      });
+      const need = sections.reduce((a, s) => a + s.need, 0);
+      const done = sections.reduce((a, s) => a + Math.min(s.picked, s.need || s.picked), 0);
+      return { id: c.id, name: c.name, note: c.menu.note || '', sections: sections,
+               need: need, done: done, ready: need === 0 || done >= need };
+    });
+    return counters;
+  }
+  /* Packages belong to a buffet. A live cooking station on its own is priced
+     from its counters, so the package and dish screens are skipped. */
+  offersPackages() {
+    const st = this.state;
+    if (st.type === 'delivery') return true;
+    return st.layout === 'buffet' || st.layout === 'both';
+  }
   // a live station means there are counters to choose
   hasCounters() {
     const l = this.state.layout;
@@ -1114,7 +1532,9 @@ class Component extends DCLogic {
     const go = (scr, clearRet, setRet) => this.setState({ screen: scr, returnTo: setRet ? 'review' : (clearRet && scr === 'review' ? null : st.returnTo), pdfMsg: '' });
     const openItems = (fromReview) => {
       const key = st.cuisine + '|' + st.pkg + '|' + (st.pureVeg ? 'pv' : 'all');
-      this.setState({ screen: 'items', minWarn: false, returnTo: fromReview ? 'review' : st.returnTo, tab: 'starters', fcu: 'all', sub: 0, note: '', sel: st.selKey === key ? st.sel : {}, notes: st.selKey === key ? st.notes : {}, noteFor: null, zoom: null, selKey: key });
+      const pmOpen = this.pickMenu(st.cuisine);
+      const firstTab = pmOpen ? 'sec0' : 'starters';
+      this.setState({ screen: 'items', minWarn: false, returnTo: fromReview ? 'review' : st.returnTo, tab: firstTab, fcu: 'all', sub: 0, note: '', sel: st.selKey === key ? st.sel : {}, notes: st.selKey === key ? st.notes : {}, noteFor: null, zoom: null, selKey: key });
     };
     const S = this.summary();
     const themes = this.THEMES.map((t) => {
@@ -1167,10 +1587,18 @@ class Component extends DCLogic {
         go(ret ? 'review' : 'setup', true);
       },
       backSetup: () => go(ret ? 'review' : 'details', true),
-      nextFromSetup: () => go(ret ? 'review' : (this.hasCounters() ? 'counters' : 'pkg'), true),
+      nextFromSetup: () => go(ret ? 'review'
+        : (this.hasCounters() ? 'counters' : (this.offersPackages() ? 'pkg' : 'theme')), true),
       backCounters: () => go(ret ? 'review' : 'setup', true),
-      nextFromCounters: () => go(ret ? 'review' : 'pkg', true),
-      backPkg: () => go(ret ? 'review' : (this.hasCounters() ? 'counters' : 'setup'), true),
+      nextFromCounters: () => go(ret ? 'review'
+        : (this.menuCounters().length ? 'countermenu'
+           : (this.offersPackages() ? 'pkg' : 'theme')), true),
+      backCounterMenu: () => go(ret ? 'review' : 'counters', true),
+      nextFromCounterMenu: () => go(ret ? 'review'
+        : (this.offersPackages() ? 'pkg' : 'theme'), true),
+      backPkg: () => go(ret ? 'review'
+        : (this.menuCounters().length ? 'countermenu'
+           : (this.hasCounters() ? 'counters' : 'setup')), true),
       nextFromPkg: () => {
         if (this.pkgVals().belowMin && !st.consent) { this.setState({ minWarn: true }); return; }
         openItems();
@@ -1180,7 +1608,10 @@ class Component extends DCLogic {
         if (this.itemsVals().custBelowMin && !st.custMinOk) { this.setState({ minWarn: true }); return; }
         go(ret ? 'review' : 'theme', true);
       },
-      backTheme: () => go(ret ? 'review' : 'items', true),
+      backTheme: () => go(ret ? 'review'
+        : (this.offersPackages() ? 'items'
+           : (this.menuCounters().length ? 'countermenu'
+              : (this.hasCounters() ? 'counters' : 'setup'))), true),
       nextFromTheme: () => go('review', true),
       backReview: () => go('theme', true),
       editDetails: () => go('details', false, true),
@@ -1200,6 +1631,13 @@ class Component extends DCLogic {
       hasPdfMsg: !!st.pdfMsg,
       pdfMsg: st.pdfMsg,
       downloadPdf: () => this.downloadPdf(),
+      terms: this.TERMS.map((t) => ({ text: t })),
+      termsOn: st.terms,
+      termsWarn: st.termsWarn,
+      termsBorder: st.termsWarn && !st.terms ? '#C62828' : '#E4D9C2',
+      termsBg: st.termsWarn && !st.terms ? '#FDECEA' : '#FFFFFF',
+      termsColor: st.termsWarn && !st.terms ? '#9B1C1C' : '#0E3B33',
+      toggleTerms: () => this.setState({ terms: !st.terms, termsWarn: false }),
       // details
       name: st.name, cc: st.cc, phone: st.phone, emirate: st.emirate, date: st.date, time: st.time,
       dWarn: !!st.detailsWarn,
@@ -1247,6 +1685,80 @@ class Component extends DCLogic {
       // Delivery asks no layout or venue, so those only count when onsite.
       setupDone: sReady && !typeOpen &&
                  !(isOnsite && layoutOpen) && !(isOnsite && venueOpen),
+      isSetItems: !!(this.setMenu(st.cuisine) && typeof st.pkg === 'number'),
+      setMenuName: (() => {
+        const m = this.setMenu(st.cuisine);
+        return (m && typeof st.pkg === 'number' && m.packages[st.pkg]) ? m.packages[st.pkg].name : '';
+      })(),
+      setSections: (() => {
+        const m = this.setMenu(st.cuisine);
+        const pk = (m && typeof st.pkg === 'number') ? m.packages[st.pkg] : null;
+        if (!pk) return [];
+        return pk.sections.map((sec) => ({
+          title: sec.title,
+          items: sec.items.map((n) => Object.assign({ name: n }, this.setIcon(n, sec.title)))
+        }));
+      })(),
+      isCounterMenu: screen === 'countermenu',
+      cmTabs: (() => {
+        const cs = this.counterMenuState();
+        const cur = (cs.some((c) => c.id === st.cmTab) ? st.cmTab : (cs[0] && cs[0].id));
+        return cs.map((c) => ({
+          label: c.name,
+          count: c.need ? c.done + ' of ' + c.need : 'All served',
+          on: c.id === cur,
+          subColor: c.id === cur ? '#E9C77E' : '#8A928D',
+          bg: c.id === cur ? '#0E3B33' : '#FFFFFF',
+          color: c.id === cur ? '#FBF6EA' : '#0E3B33',
+          border: c.id === cur ? '#0E3B33' : '#DDD3BF',
+          pick: () => this.setState({ cmTab: c.id })
+        }));
+      })(),
+      cmActive: (() => {
+        const cs = this.counterMenuState();
+        const cur = cs.filter((c) => c.id === st.cmTab)[0] || cs[0];
+        if (!cur) return { name: '', note: '', sections: [] };
+        return {
+          name: cur.name,
+          note: cur.note || (cur.need ? '' : 'Everything here is served'),
+          hasNote: !!(cur.note || !cur.need),
+          sections: cur.sections.map((sec) => ({
+            title: sec.title,
+            anchor: (sec.choose && !sec.full && sec === cur.sections.filter((x) => x.choose && !x.full)[0])
+              ? 'cm-next' : '',
+            pill: sec.choose ? sec.picked + ' of ' + sec.need : 'Included',
+            pillBg: sec.choose ? (sec.full ? '#D3E7DE' : '#EADFC8') : '#D3E7DE',
+            pillColor: sec.choose ? (sec.full ? '#12604B' : '#5A6863') : '#12604B',
+            items: sec.items.map((it) => Object.assign({
+              name: it.name,
+              on: it.on || !sec.choose,
+              locked: !sec.choose,
+              border: (it.on || !sec.choose) ? '#C9963B' : '#E4D9C2',
+              bg: (it.on || !sec.choose) ? '#FDF7EA' : '#FFFFFF',
+              opacity: !sec.choose ? 0.92 : 1,
+              pick: () => {
+                if (!sec.choose) return;
+                const n = Object.assign({}, this.state.counterItems);
+                if (n[it.key]) delete n[it.key]; else n[it.key] = true;
+                this.setState({ counterItems: n });
+              }
+            }, this.setIcon(it.name, sec.title)))
+          }))
+        };
+      })(),
+      cmReady: this.counterMenuState().every((c) => c.ready),
+      cmNotReady: !this.counterMenuState().every((c) => c.ready),
+      cmNextLabel: (() => {
+        const next = this.counterMenuState().filter((c) => !c.ready)[0];
+        return next ? 'Choose for ' + next.name : '';
+      })(),
+      cmGoNext: () => {
+        const cs = this.counterMenuState();
+        const next = cs.filter((c) => !c.ready)[0];
+        if (!next) return;
+        this._scrollTo = 'cm-next';
+        this.setState({ cmTab: next.id, cmNudge: (st.cmNudge || 0) + 1 });
+      },
       isCounters: screen === 'counters',
       counterGroups: this.COUNTERS.map((g) => ({
         group: g.group,

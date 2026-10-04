@@ -524,6 +524,7 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
         kv('Service', S.typeLabel) +
         (S.isOnsite ? kv('Style', S.layoutLabel) + kv('Venue', S.venueLabel) : '') +
         (S.hasCounters ? kv('Live counters', S.countersText) : '') +
+        kv('Terms accepted', ((l.details || {}).order || {}).choices && ((l.details || {}).order || {}).choices.terms ? 'Yes' : 'Not recorded') +
       '</div></div>' +
       '<div class="sec"><h3>Menu</h3><div class="body">' +
         kv('Package', S.pkgLabel) + kv('Cuisine', S.cuisine) + kv('Per person', S.ppText) +
