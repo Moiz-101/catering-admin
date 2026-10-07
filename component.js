@@ -1,7 +1,7 @@
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { screen: null, name: '', cc: '+971', phone: '', emirate: '', date: '', time: '', pax: 18, paxEdit: null, pureVeg: false, minWarn: false, custMinOk: false, detailsWarn: false, type: null, layout: null, venue: null, cuisine: 'ic', pkg: null, theme: null, themeView: null, eventNote: '', returnTo: null, pdfMsg: '', zoom: null, notes: {}, noteFor: null, noteDraft: '', consent: false, setupEdit: null, counters: {}, counterItems: {}, cmNudge: 0, terms: false, termsWarn: false, tab: 'starters', fcu: 'all', sub: 0, note: '', sel: {}, selKey: '' };
+    this.state = { screen: null, name: '', cc: '+971', phone: '', emirate: '', date: '', time: '', pax: 18, paxEdit: null, pureVeg: false, minWarn: false, custMinOk: false, detailsWarn: false, type: null, layout: null, venue: null, cuisine: 'ic', pkg: null, theme: null, themeView: null, themeShot: 1, eventNote: '', returnTo: null, pdfMsg: '', zoom: null, notes: {}, noteFor: null, noteDraft: '', consent: false, setupEdit: null, counters: {}, counterItems: {}, cmNudge: 0, terms: false, termsWarn: false, tab: 'starters', fcu: 'all', sub: 0, note: '', sel: {}, selKey: '' };
     // Dummy photo tiles for now; real photos replace the glyph tile later.
     this.ITEMS = [];
     const add = (cu, cat, diet, sub, list) => list.forEach((n) => {
@@ -75,6 +75,10 @@ class Component extends DCLogic {
       { id: 't5', name: 'Arabian Nights', desc: 'Lanterns, crescent moon and starlight', price: 1200, c: ['#14264A', '#0C1830', '#F0C868', '#C9963B'] },
       { id: 't6', name: 'Crystal Luxe', desc: 'Chandeliers, crystal and white florals', price: 1800, c: ['#EEF1F5', '#D5DBE5', '#8FA3BF', '#FFFFFF'] }
     ];
+    // Themes that have photographs in deploy/images/themes, three to a theme.
+    // Anything not listed falls back to the drawing, so a new theme is never bare.
+    this.THEME_SHOT = ['t1', 't2', 't3', 't4', 't5', 't6'];
+    this.THEME_IMG = {};       // "t5-2" -> photo, for when the panel can set them
     this.THEME_INFO = {
       t1: { long: 'A timeless ivory and gold setup with soft fairy lights, classic arches and elegant table styling. Suits almost any celebration.', incl: ['Ivory and gold backdrop with arch frames', 'Fairy-light canopy', 'Elegant table centrepieces with candles', 'Matching table linen and napkins', 'Welcome signboard'], best: ['Weddings', 'Anniversaries', 'Corporate dinners'] },
       t2: { long: 'Fresh green foliage, hanging vines and natural textures create a calm, relaxed garden-party mood.', incl: ['Foliage wall and leafy arch', 'Hanging greenery accents', 'Wood and greenery table centrepieces', 'Natural linen table runners', 'Welcome signboard'], best: ['Birthdays', 'Baby showers', 'Outdoor lunches'] },
@@ -1354,6 +1358,7 @@ class Component extends DCLogic {
       if (config.SAVE) this.SAVE = config.SAVE;
       if (config.QB) this.QB = config.QB;
       if (config.COUNTER_IMG) this.COUNTER_IMG = config.COUNTER_IMG;
+      if (config.THEME_IMG) this.THEME_IMG = config.THEME_IMG;
       if (Array.isArray(config.TERMS) && config.TERMS.length) this.TERMS = config.TERMS;
     }
     // dish ids are positions, so anything picked before the swap no longer means the same thing
@@ -1485,6 +1490,14 @@ class Component extends DCLogic {
     if (u) return 'url("' + String(u).replace(/"/g, '%22') + '")';
     return (this.COUNTER_SHOT || []).indexOf(id) !== -1
       ? 'url("images/counters/' + id + '.jpg")' : '';
+  }
+  // One of a theme's three photographs, as a CSS background value.
+  themePhoto(id, n) {
+    const key = id + '-' + (n || 1);
+    const u = (this.THEME_IMG || {})[key];
+    if (u) return 'url("' + String(u).replace(/"/g, '%22') + '")';
+    return (this.THEME_SHOT || []).indexOf(id) !== -1
+      ? 'url("images/themes/' + key + '.jpg")' : '';
   }
   /* A little illustration for every counter, in the same flat style as the
      setup cards. They are drawn here rather than in the template because
@@ -1744,8 +1757,10 @@ class Component extends DCLogic {
     const S = this.summary();
     const themes = this.THEMES.map((t) => {
       const on = st.theme === t.id, free = t.price === 0;
+      const shot = this.themePhoto(t.id, 1);
       return {
         name: t.name, desc: t.desc, c1: t.c[0], c2: t.c[1], c3: t.c[2], c4: t.c[3],
+        shot: shot, hasShot: !!shot, noShot: !shot,
         k1: t.id === 't1', k2: t.id === 't2', k3: t.id === 't3', k4: t.id === 't4', k5: t.id === 't5', k6: t.id === 't6',
         tag: free ? 'FREE' : 'PREMIUM', tagBg: free ? '#D3E7DE' : '#C9963B', tagColor: '#0E3B33',
         priceText: free ? 'Free' : '+ ' + S.fmt(t.price) + ' Dh',
@@ -1753,14 +1768,22 @@ class Component extends DCLogic {
         on: on, border: on ? '#C9963B' : '#E4D9C2',
         shadow: on ? '0 6px 16px rgba(201,150,59,0.35)' : '0 1px 2px rgba(14,59,51,0.06)',
         pick: () => this.setState({ theme: on ? null : t.id }),
-        open: () => this.setState({ screen: 'themeDetail', themeView: t.id })
+        open: () => this.setState({ screen: 'themeDetail', themeView: t.id, themeShot: 1 })
       };
     });
     const dt = this.THEMES.find((t) => t.id === st.themeView) || this.THEMES[3];
     const di = this.THEME_INFO[dt.id];
     const dOn = st.theme === dt.id, dFree = dt.price === 0;
+    const dShotNo = st.themeShot || 1;
+    const dShot = this.themePhoto(dt.id, dShotNo) || this.themePhoto(dt.id, 1);
+    const dShots = [1, 2, 3].map((n) => ({
+      url: this.themePhoto(dt.id, n), on: n === dShotNo,
+      ring: n === dShotNo ? '2.5px solid #C9963B' : '1.5px solid #E4D9C2',
+      pick: () => this.setState({ themeShot: n })
+    })).filter((x) => !!x.url);
     const dObj = {
       name: dt.name, c1: dt.c[0], c2: dt.c[1], c3: dt.c[2], c4: dt.c[3],
+      shot: dShot, hasShot: !!dShot, noShot: !dShot, shots: dShots,
       k1: dt.id === 't1', k2: dt.id === 't2', k3: dt.id === 't3', k4: dt.id === 't4', k5: dt.id === 't5', k6: dt.id === 't6',
       tag: dFree ? 'FREE WITH PACKAGE' : 'PREMIUM', tagBg: dFree ? '#D3E7DE' : '#C9963B', tagColor: '#0E3B33',
       priceLong: dFree ? 'Free with your package' : '+ ' + S.fmt(dt.price) + ' Dh per event',
