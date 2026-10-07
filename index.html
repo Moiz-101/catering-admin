@@ -559,10 +559,13 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
 
   document.getElementById('sheetBack').onclick = function () { navBack(); };
 
-  document.getElementById('sheetPdf').onclick = function () {
+  document.getElementById('sheetPdf').onclick = async function () {
     if (!openInst) return;
+    // the photographs live on the customer's site, not this one
+    openInst.PDF_BASE = SITE + '/';
+    var shots = await openInst.pdfShots();
     var blob;
-    try { blob = openInst.buildPdf(); }
+    try { blob = openInst.buildPdf(null, shots.counters, shots.theme); }
     catch (e) { alert('Could not build the PDF for this order.'); return; }
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
