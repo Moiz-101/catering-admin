@@ -1684,6 +1684,17 @@ class Component extends DCLogic {
     const st = this.state;
     const list = this.menuCounters();
     const sel = st.counterItems || {};
+    // a counter we hold no menu for still shows, so the customer can see that
+    // all of what they chose is accounted for
+    const bare = [];
+    const withMenu = {};
+    list.forEach((c) => { withMenu[c.id] = true; });
+    (this.COUNTERS || []).forEach((g) => g.items.forEach((c) => {
+      if ((st.counters || {})[c.id] && !withMenu[c.id]) {
+        bare.push({ id: c.id, name: c.name, note: 'Our team will confirm what this counter serves with you.',
+                    sections: [], need: 0, done: 0, ready: true, chef: true });
+      }
+    }));
     const counters = list.map((c) => {
       const sections = c.menu.sections.map((sec, si) => {
         const items = sec.items.map((n, ii) => {
@@ -1700,7 +1711,7 @@ class Component extends DCLogic {
       return { id: c.id, name: c.name, note: c.menu.note || '', sections: sections,
                need: need, done: done, ready: need === 0 || done >= need };
     });
-    return counters;
+    return counters.concat(bare);
   }
   /* Packages belong to a buffet. A live cooking station on its own is priced
      from its counters, so the package and dish screens are skipped. */
@@ -1939,7 +1950,7 @@ class Component extends DCLogic {
         const cur = (cs.some((c) => c.id === st.cmTab) ? st.cmTab : (cs[0] && cs[0].id));
         return cs.map((c) => ({
           label: c.name,
-          count: c.need ? c.done + ' of ' + c.need : 'All served',
+          count: c.chef ? "Chef's selection" : (c.need ? c.done + ' of ' + c.need : 'All served'),
           on: c.id === cur,
           subColor: c.id === cur ? '#E9C77E' : '#8A928D',
           bg: c.id === cur ? '#0E3B33' : '#FFFFFF',
@@ -1952,12 +1963,11 @@ class Component extends DCLogic {
         const cs = this.counterMenuState();
         const cur = cs.filter((c) => c.id === st.cmTab)[0] || cs[0];
         if (!cur) return { name: '', note: '', sections: [] };
-        const curShot = this.counterPhoto(cur.id);
         return {
           name: cur.name,
-          shot: curShot, hasShot: !!curShot, noShot: !curShot,
           note: cur.note || (cur.need ? '' : 'Everything here is served'),
-          hasNote: !!(cur.note || !cur.need),
+          hasNote: !!(cur.note || !cur.need) && !cur.chef,
+          chef: !!cur.chef,
           sections: cur.sections.map((sec) => ({
             title: sec.title,
             anchor: (sec.choose && !sec.full && sec === cur.sections.filter((x) => x.choose && !x.full)[0])
