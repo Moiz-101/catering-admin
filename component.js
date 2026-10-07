@@ -756,11 +756,7 @@ class Component extends DCLogic {
           ['iBowl', 'iDump', 'iRoll', 'iSkew', 'iBread', 'iSweet', 'iCup'].forEach((k) => { o[k] = (k === icon); });
           // the owner's own photo first, then the one built into this page,
           // and the drawn icon when there is neither
-          const byCourse = window.DISH_PHOTOS_BY_COURSE || {};
-          const shot = byCourse[x.name + '|' + x.cat + '|' + (x.diet || '')] ||
-                       byCourse[x.name + '|' + x.cat] ||
-                       (window.DISH_PHOTOS || {})[x.name];
-          o.photo = x.img || (shot ? 'images/web/' + shot + '.jpg' : '');
+          o.photo = x.img || this.dishPhoto(x.name, x.cat, x.diet);
           o.hasPhoto = !!o.photo;
           o.noPhoto = !o.photo;
           o.zoom = () => this.setState({ zoom: x.id });
@@ -1491,6 +1487,16 @@ class Component extends DCLogic {
     return (this.COUNTER_SHOT || []).indexOf(id) !== -1
       ? 'url("images/counters/' + id + '.jpg")' : '';
   }
+  // The photograph for a dish by name: the owner's own first, then the one
+  // built into this page. Counter dishes use the same names, so a photo added
+  // for the buffet shows up on the counter menus too.
+  dishPhoto(name, cat, diet) {
+    const byCourse = window.DISH_PHOTOS_BY_COURSE || {};
+    const shot = (cat ? byCourse[name + '|' + cat + '|' + (diet || '')] : null) ||
+                 (cat ? byCourse[name + '|' + cat] : null) ||
+                 (window.DISH_PHOTOS || {})[name];
+    return shot ? 'images/web/' + shot + '.jpg' : '';
+  }
   // One of a theme's three photographs, as a CSS background value.
   themePhoto(id, n) {
     const key = id + '-' + (n || 1);
@@ -1946,8 +1952,10 @@ class Component extends DCLogic {
         const cs = this.counterMenuState();
         const cur = cs.filter((c) => c.id === st.cmTab)[0] || cs[0];
         if (!cur) return { name: '', note: '', sections: [] };
+        const curShot = this.counterPhoto(cur.id);
         return {
           name: cur.name,
+          shot: curShot, hasShot: !!curShot, noShot: !curShot,
           note: cur.note || (cur.need ? '' : 'Everything here is served'),
           hasNote: !!(cur.note || !cur.need),
           sections: cur.sections.map((sec) => ({
@@ -1959,6 +1967,9 @@ class Component extends DCLogic {
             pillColor: sec.choose ? (sec.full ? '#12604B' : '#5A6863') : '#12604B',
             items: sec.items.map((it) => Object.assign({
               name: it.name,
+              photo: this.dishPhoto(it.name) ? 'url("' + this.dishPhoto(it.name) + '")' : 'none',
+              hasPhoto: !!this.dishPhoto(it.name),
+              noPhoto: !this.dishPhoto(it.name),
               on: it.on || !sec.choose,
               locked: !sec.choose,
               border: (it.on || !sec.choose) ? '#C9963B' : '#E4D9C2',
