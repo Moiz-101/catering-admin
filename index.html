@@ -542,8 +542,9 @@ window.DISH_PHOTOS = {}; window.DISH_PHOTOS_BY_COURSE = {};
         kv('Theme', S.themeLabel) + kv('Notes', S.notesText) +
       '</div></div>' +
       '<div class="sec"><h3>Total</h3><div class="body">' +
-        '<div class="tot"><span>' + esc(S.menuRowLabel) + '</span><span>' + esc(S.menuRowValue) + '</span></div>' +
+        (S.showMenu === false ? '' : '<div class="tot"><span>' + esc(S.menuRowLabel) + '</span><span>' + esc(S.menuRowValue) + '</span></div>') +
         (S.showMin ? '<div class="tot"><span>Minimum order top-up</span><span>' + esc(S.minValue) + '</span></div>' : '') +
+        (S.showCounters ? '<div class="tot"><span>' + esc(S.counterRowLabel) + '</span><span>' + esc(S.counterRowValue) + '</span></div>' : '') +
         '<div class="tot"><span>' + esc(S.themeRowLabel) + '</span><span>' + esc(S.themeRowValue) + '</span></div>' +
         '<div class="tot big"><span>Grand total</span><b>' + esc(S.grand) + '</b></div>' +
       '</div></div>' +
