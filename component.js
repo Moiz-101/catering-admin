@@ -279,7 +279,7 @@ class Component extends DCLogic {
     };
     /* What the customer agrees to before the request goes in. The first three
        are the owner's own wording; the rest come from the terms already on
-       Dragon Empire's written proposals, so nothing here is invented. */
+       Desire Catering's written proposals, so nothing here is invented. */
     this.TERMS = [
       'Please ask our experts for the appropriate setup for your indoor live stations.',
       'Event duration is 4 hours. Beyond that, AED 300 per hour applies.',
@@ -1116,7 +1116,7 @@ class Component extends DCLogic {
     ops.push(col(GOLD) + ' RG 1.4 w 0 ' + n2(Y(HERO)) + ' m ' + PW + ' ' + n2(Y(HERO)) + ' l S');
 
     let y = 118;
-    ctext(PW / 2, y, spaced('Dragon Empire'), 9, true, GOLD);
+    ctext(PW / 2, y, spaced('Desire Catering'), 9, true, GOLD);
     y += 46;
     ctext(PW / 2, y, 'Build your Menu!', 36, true, PAPER);
     y += 20;
@@ -1195,7 +1195,7 @@ class Component extends DCLogic {
     rtext(PW - IM - 20, ty, S.grand, 25, true, INK);
 
     ctext(PW / 2, FOOT - 10, 'Approximate price. Final quote is confirmed by our team after review.', 7.5, false, SOFT);
-    ctext(PW / 2, FOOT + 4, 'Dragon Empire Catering  -  order.dubaicateringservice.com', 7.5, true, SOFT);
+    ctext(PW / 2, FOOT + 4, 'Desire Catering  -  order.dubaicateringservice.com', 7.5, true, SOFT);
 
     /* ---------------- page two ----------------
 
@@ -1209,7 +1209,7 @@ class Component extends DCLogic {
 
     ops2.push(col(PAPER) + ' rg 0 0 ' + PW + ' ' + PH + ' re f');
     ops2.push(col(INK) + ' rg 0 ' + n2(Y(104)) + ' ' + PW + ' 104 re f');
-    ctext(PW / 2, 42, spaced('Dragon Empire'), 8, true, GOLD, ops2);
+    ctext(PW / 2, 42, spaced('Desire Catering'), 8, true, GOLD, ops2);
     ctext(PW / 2, 72, 'Your Menu', 25, true, PAPER, ops2);
     ops2.push(col(GOLD) + ' RG 1.2 w 0 ' + n2(Y(104)) + ' m ' + PW + ' ' + n2(Y(104)) + ' l S');
     // a live-stations order has no package, so do not announce one that is not there
@@ -1325,7 +1325,7 @@ class Component extends DCLogic {
       });
     }
 
-    ctext(PW / 2, FOOT2 + 4, 'Dragon Empire Catering  -  order.dubaicateringservice.com', 7.5, true, SOFT, ops2);
+    ctext(PW / 2, FOOT2 + 4, 'Desire Catering  -  order.dubaicateringservice.com', 7.5, true, SOFT, ops2);
 
     /* ---------------- assemble ----------------
        Any number of photographs can be placed on the page, so the objects are
